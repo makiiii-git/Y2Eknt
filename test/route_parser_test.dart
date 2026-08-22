@@ -117,6 +117,83 @@ void main() {
     });
   });
 
+  group('RouteInfo.jrSegment', () {
+    const withAccessLegs = '新宿⇒仙台\n'
+        '2026年09月01日\n'
+        '08:30 ⇒ 12:51\n'
+        '------------------------------\n'
+        '■新宿\n'
+        '↓ 08:30～08:45\n'
+        '↓ 東京メトロ丸ノ内線 池袋行\n'
+        '■東京\n'
+        '↓ 11:20～12:51\n'
+        '↓ ＪＲ新幹線はやぶさ19号 新青森行\n'
+        '■仙台\n'
+        '↓ 13:00～13:10\n'
+        '↓ 仙台市地下鉄南北線 泉中央行\n'
+        '■泉中央\n'
+        '---\n';
+
+    test('地下鉄・私鉄のアクセス区間を除いたJR区間を返す', () {
+      final result = RouteParser.parse(withAccessLegs.replaceFirst(
+          '新宿⇒仙台', '新宿⇒泉中央'));
+      final seg = result.routeInfo!.jrSegment;
+      expect(seg.fromStation, '東京');
+      expect(seg.toStation, '仙台');
+      expect(seg.departureTime, '11:20');
+      expect(seg.arrivalTime, '12:51');
+    });
+
+    test('JR在来線のアクセス区間も除き新幹線区間を優先する', () {
+      // 実機データ（2026-08-22）: 飯田橋→有楽町(メトロ)→東京(ＪＲ山手線)
+      // →仙台(新幹線)→泉中央(地下鉄) の形
+      const realWorld = '飯田橋⇒泉中央\n'
+          '2026年08月28日\n'
+          '13:40 ⇒ 16:00\n'
+          '■飯田橋\n'
+          '↓ 13:40～13:48\n'
+          '↓ 東京メトロ有楽町線  保谷行\n'
+          '■有楽町\n'
+          '↓ 13:58～14:00\n'
+          '↓ ＪＲ山手線内回り  東京・上野方面\n'
+          '■東京\n'
+          '↓ 14:20～15:51\n'
+          '↓ ＪＲ新幹線はやぶさ25号 新青森行\n'
+          '■仙台\n'
+          '↓ 15:55～16:00\n'
+          '↓ 仙台市地下鉄南北線 泉中央行\n'
+          '■泉中央\n'
+          '---\n';
+      final seg = RouteParser.parse(realWorld).routeInfo!.jrSegment;
+      expect(seg.fromStation, '東京');
+      expect(seg.toStation, '仙台');
+      expect(seg.departureTime, '14:20');
+      expect(seg.arrivalTime, '15:51');
+    });
+
+    test('JR区間が無ければ経路全体を返す', () {
+      const subwayOnly = '新宿⇒池袋\n'
+          '2026年09月01日\n'
+          '08:30 ⇒ 08:45\n'
+          '■新宿\n'
+          '↓ 08:30～08:45\n'
+          '↓ 東京メトロ丸ノ内線 池袋行\n'
+          '■池袋\n'
+          '---\n';
+      final seg = RouteParser.parse(subwayOnly).routeInfo!.jrSegment;
+      expect(seg.fromStation, '新宿');
+      expect(seg.toStation, '池袋');
+      expect(seg.departureTime, '08:30');
+    });
+
+    test('全区間JRなら経路全体と一致する', () {
+      final seg = RouteParser.parse(realSample).routeInfo!.jrSegment;
+      expect(seg.fromStation, '東京');
+      expect(seg.toStation, '仙台');
+      expect(seg.departureTime, '11:20');
+    });
+  });
+
   group('RouteParser フォールバック', () {
     test('空テキストは失敗を返す', () {
       final result = RouteParser.parse('');

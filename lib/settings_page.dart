@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'app_settings.dart';
 import 'update_checker.dart';
 
 /// 設定画面。バージョン表示とアプリの更新チェックを行う。
@@ -15,6 +16,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   String _currentVersion = '';
   bool _checking = false;
+  bool _exEnabled = false;
 
   @override
   void initState() {
@@ -22,6 +24,14 @@ class _SettingsPageState extends State<SettingsPage> {
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _currentVersion = info.version);
     });
+    AppSettings.getExEnabled().then((v) {
+      if (mounted) setState(() => _exEnabled = v);
+    });
+  }
+
+  Future<void> _setExEnabled(bool value) async {
+    setState(() => _exEnabled = value);
+    await AppSettings.setExEnabled(value);
   }
 
   Future<void> _checkUpdate() async {
@@ -79,6 +89,16 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
         children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.directions_railway),
+            title: const Text('EXアプリ連携'),
+            subtitle: const Text(
+                '東海道・山陽・九州新幹線の経路でEXアプリを開くボタンを表示します。'
+                '検索条件は引き継げないため、経路情報のコピーで入力を補助します'),
+            value: _exEnabled,
+            onChanged: _setExEnabled,
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('バージョン'),

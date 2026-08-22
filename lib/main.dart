@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_settings.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_launcher.dart';
 import 'route_parser.dart';
@@ -38,12 +39,19 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String? _sharedText;
   ParseResult? _parseResult;
+  bool _exEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _loadSettings();
     _loadInitialText();
     ShareIntent.setOnSharedText(_onText);
+  }
+
+  Future<void> _loadSettings() async {
+    final exEnabled = await AppSettings.getExEnabled();
+    if (mounted) setState(() => _exEnabled = exEnabled);
   }
 
   Future<void> _loadInitialText() async {
@@ -87,10 +95,12 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '設定',
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const SettingsPage(),
               ));
+              // 設定画面でEX連携が切り替えられた場合に反映する
+              _loadSettings();
             },
           ),
         ],
@@ -112,11 +122,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// 予約サービスへのボタン群。経路の列車に応じて優先順を入れ替える。
+  /// EXアプリ連携は設定で有効にした場合のみ表示する（既定は無効）。
   List<Widget> _buildServiceButtons(RouteInfo info) {
+    final exVisible = _exEnabled;
     final ekinetButton = _ServiceButton(
       icon: Icons.train,
       label: 'えきねっとで検索（条件を自動入力）',
-      primary: !info.usesTokaidoSanyoKyushu,
+      primary: !exVisible || !info.usesTokaidoSanyoKyushu,
       color: const Color(0xFF00A044), // えきねっとグリーン
       onPressed: () {
         Navigator.of(context).push(MaterialPageRoute(
@@ -131,6 +143,7 @@ class _HomePageState extends State<HomePage> {
       color: const Color(0xFF0053A6), // EX予約ブルー
       onPressed: () => _openExApp(info),
     );
+    if (!exVisible) return [ekinetButton];
     return info.usesTokaidoSanyoKyushu
         ? [exButton, const SizedBox(height: 8), ekinetButton]
         : [ekinetButton, const SizedBox(height: 8), exButton];
@@ -228,6 +241,10 @@ class _RouteSummaryCard extends StatelessWidget {
     final time = (info.departureTime != null)
         ? '${info.departureTime} 発 → ${info.arrivalTime ?? '?'} 着'
         : null;
+    // 地下鉄・私鉄のアクセス区間を除いたJR区間が経路全体と異なる場合に表示
+    final seg = info.jrSegment;
+    final showJrSegment = seg.fromStation != info.departureStation ||
+        seg.toStation != info.arrivalStation;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -240,6 +257,18 @@ class _RouteSummaryCard extends StatelessWidget {
             ),
             if (date != null) Text(date, style: textTheme.bodyLarge),
             if (time != null) Text(time, style: textTheme.bodyLarge),
+            if (showJrSegment)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '予約対象（JR区間）: ${seg.fromStation} → ${seg.toStation}'
+                  '${seg.departureTime != null ? '  ${seg.departureTime}発' : ''}',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             if (info.legs.isNotEmpty) ...[
               const Divider(),
               for (final leg in info.legs)

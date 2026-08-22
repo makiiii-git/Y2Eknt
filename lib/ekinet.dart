@@ -19,9 +19,12 @@ class Ekinet {
 
   /// [info] の内容を検索フォームへ入力するJavaScriptを生成する。
   ///
+  /// 駅と時刻は地下鉄・私鉄などのアクセス区間を除いたJR区間
+  /// （[RouteInfo.jrSegment]）を使う。
   /// 分は選択肢に確実に存在するよう5分単位に切り捨てる。
   /// 検索ボタンは押さず、内容の確認と実行はユーザーに委ねる。
   static String buildAutofillScript(RouteInfo info) {
+    final seg = info.jrSegment;
     final buf = StringBuffer();
     buf.write('''
 (function() {
@@ -38,8 +41,8 @@ class Ekinet {
     es[0].value = v;
     es[0].dispatchEvent(new Event('change', {bubbles: true}));
   }
-  setVal('form_station_geton', '${_js(info.departureStation)}');
-  setVal('form_station_getoff', '${_js(info.arrivalStation)}');
+  setVal('form_station_geton', '${_js(seg.fromStation)}');
+  setVal('form_station_getoff', '${_js(seg.toStation)}');
 ''');
 
     if (info.year != null && info.month != null && info.day != null) {
@@ -49,7 +52,7 @@ class Ekinet {
       buf.write("  setSel('form_date_oneway_date', '$ymd');\n");
     }
 
-    final dep = info.departureTime;
+    final dep = seg.departureTime;
     if (dep != null) {
       final parts = dep.split(':');
       final hour = int.parse(parts[0]);

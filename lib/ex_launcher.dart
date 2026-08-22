@@ -16,14 +16,15 @@ class ExLauncher {
       'https://shinkansen1.jr-central.co.jp/RSV_P/ex_index.htm';
 
   /// EXアプリの検索フォームに貼り付けやすい経路サマリー。
+  /// 駅と時刻はアクセス区間（地下鉄・私鉄）を除いたJR区間を使う。
   static String buildSummary(RouteInfo info) {
-    final buf =
-        StringBuffer('${info.departureStation} → ${info.arrivalStation}');
+    final seg = info.jrSegment;
+    final buf = StringBuffer('${seg.fromStation} → ${seg.toStation}');
     if (info.year != null) {
       buf.write('\n${info.year}/${info.month}/${info.day}');
     }
-    if (info.departureTime != null) {
-      buf.write(' ${info.departureTime}発');
+    if (seg.departureTime != null) {
+      buf.write(' ${seg.departureTime}発');
     }
     return buf.toString();
   }

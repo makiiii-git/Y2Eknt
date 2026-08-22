@@ -37,6 +37,26 @@ class TrainLeg {
 
   /// 例: "ＪＲ新幹線はやぶさ19号(H5系/E5系)  新青森行"
   final String? trainName;
+
+  /// JR管轄の区間か。Yahoo!乗換案内の共有テキストではJR路線・列車名に
+  /// 「ＪＲ」（全角）が付くことを利用して判定する。
+  bool get isJr =>
+      trainName != null && RegExp(r'ＪＲ|JR').hasMatch(trainName!);
+}
+
+/// 経路のうち予約サービスへ渡す区間（乗車駅・降車駅・時刻）。
+class RouteSegment {
+  const RouteSegment({
+    required this.fromStation,
+    required this.toStation,
+    this.departureTime,
+    this.arrivalTime,
+  });
+
+  final String fromStation;
+  final String toStation;
+  final String? departureTime;
+  final String? arrivalTime;
 }
 
 /// 経路全体の解析結果。
@@ -69,6 +89,38 @@ class RouteInfo {
   /// 東海道・山陽・九州新幹線（EX予約の対象列車）を含む経路か。
   bool get usesTokaidoSanyoKyushu => legs.any(
       (l) => l.trainName != null && _tokaidoSanyoKyushuRe.hasMatch(l.trainName!));
+
+  /// 予約サービスへ渡すJR区間。
+  ///
+  /// 優先順位:
+  /// 1. 新幹線・特急の区間（予約対象の列車）。山手線などJR在来線の
+  ///    アクセス区間もここでは除かれる
+  /// 2. 無ければJRの区間（地下鉄・私鉄のアクセス区間を除く）
+  /// 3. どちらも判別できなければ経路全体
+  RouteSegment get jrSegment {
+    var target = legs
+        .where((l) =>
+            l.trainName != null &&
+            RegExp(r'新幹線|特急').hasMatch(l.trainName!))
+        .toList();
+    if (target.isEmpty) {
+      target = legs.where((l) => l.isJr).toList();
+    }
+    if (target.isEmpty) {
+      return RouteSegment(
+        fromStation: departureStation,
+        toStation: arrivalStation,
+        departureTime: departureTime,
+        arrivalTime: arrivalTime,
+      );
+    }
+    return RouteSegment(
+      fromStation: target.first.fromStation,
+      toStation: target.last.toStation,
+      departureTime: target.first.departureTime ?? departureTime,
+      arrivalTime: target.last.arrivalTime ?? arrivalTime,
+    );
+  }
 }
 
 /// パース結果。失敗時は [routeInfo] が null で [error] に理由が入る。
