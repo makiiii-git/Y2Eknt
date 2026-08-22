@@ -62,6 +62,13 @@ class RouteInfo {
   final String? departureTime;
   final String? arrivalTime;
   final List<TrainLeg> legs;
+
+  static final _tokaidoSanyoKyushuRe =
+      RegExp(r'のぞみ|ひかり|こだま|みずほ|さくら|つばめ');
+
+  /// 東海道・山陽・九州新幹線（EX予約の対象列車）を含む経路か。
+  bool get usesTokaidoSanyoKyushu => legs.any(
+      (l) => l.trainName != null && _tokaidoSanyoKyushuRe.hasMatch(l.trainName!));
 }
 
 /// パース結果。失敗時は [routeInfo] が null で [error] に理由が入る。

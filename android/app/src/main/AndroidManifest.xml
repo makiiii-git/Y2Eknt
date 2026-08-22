@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- えきねっとWebView・更新チェックの通信に必要 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Y2Ekinet"
         android:name="${applicationName}"
@@ -46,6 +48,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- 更新APKのダウンロードなどを外部ブラウザで開くために必要 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

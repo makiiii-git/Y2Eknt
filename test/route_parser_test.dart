@@ -97,6 +97,26 @@ void main() {
     });
   });
 
+  group('RouteInfo.usesTokaidoSanyoKyushu', () {
+    test('はやぶさ（東北新幹線）は false', () {
+      final info = RouteParser.parse(realSample).routeInfo!;
+      expect(info.usesTokaidoSanyoKyushu, isFalse);
+    });
+
+    test('のぞみ（東海道新幹線）は true', () {
+      const tokaido = '東京⇒新大阪\n'
+          '2026年09月01日\n'
+          '09:00 ⇒ 11:30\n'
+          '■東京\n'
+          '↓ 09:00～11:30\n'
+          '↓ ＪＲ新幹線のぞみ203号　新大阪行\n'
+          '■新大阪\n'
+          '---\n';
+      final info = RouteParser.parse(tokaido).routeInfo!;
+      expect(info.usesTokaidoSanyoKyushu, isTrue);
+    });
+  });
+
   group('RouteParser フォールバック', () {
     test('空テキストは失敗を返す', () {
       final result = RouteParser.parse('');

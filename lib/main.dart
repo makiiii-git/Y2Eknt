@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'ekinet_webview_page.dart';
+import 'ex_launcher.dart';
 import 'route_parser.dart';
+import 'settings_page.dart';
 import 'share_intent.dart';
 
 void main() {
@@ -17,7 +19,8 @@ class Y2EkinetApp extends StatelessWidget {
     return MaterialApp(
       title: 'Y2Ekinet',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        // えきねっとのブランドカラーに合わせたグリーン
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00A044)),
         useMaterial3: true,
       ),
       home: const HomePage(),
@@ -58,6 +61,14 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _openExApp(RouteInfo info) async {
+    // アプリがバックグラウンドに回る前に案内を出す
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('経路情報をコピーしました。EXアプリの検索画面に貼り付けてご利用ください'),
+    ));
+    await ExLauncher.launch(info);
+  }
+
   Future<void> _copyText() async {
     final text = _sharedText;
     if (text == null) return;
@@ -70,7 +81,20 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Y2Ekinet')),
+      appBar: AppBar(
+        title: const Text('Y2Ekinet'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '設定',
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const SettingsPage(),
+              ));
+            },
+          ),
+        ],
+      ),
       body: _sharedText == null ? _buildEmpty() : _buildResult(),
     );
   }
@@ -87,6 +111,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 予約サービスへのボタン群。経路の列車に応じて優先順を入れ替える。
+  List<Widget> _buildServiceButtons(RouteInfo info) {
+    final ekinetButton = _ServiceButton(
+      icon: Icons.train,
+      label: 'えきねっとで検索（条件を自動入力）',
+      primary: !info.usesTokaidoSanyoKyushu,
+      onPressed: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => EkinetWebViewPage(routeInfo: info),
+        ));
+      },
+    );
+    final exButton = _ServiceButton(
+      icon: Icons.directions_railway,
+      label: 'EXアプリで開く（東海道・山陽・九州新幹線）',
+      primary: info.usesTokaidoSanyoKyushu,
+      onPressed: () => _openExApp(info),
+    );
+    return info.usesTokaidoSanyoKyushu
+        ? [exButton, const SizedBox(height: 8), ekinetButton]
+        : [ekinetButton, const SizedBox(height: 8), exButton];
+  }
+
   Widget _buildResult() {
     final result = _parseResult!;
     final info = result.routeInfo;
@@ -96,15 +143,7 @@ class _HomePageState extends State<HomePage> {
         if (info != null) ...[
           _RouteSummaryCard(info: info),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            icon: const Icon(Icons.train),
-            label: const Text('えきねっとで検索（条件を自動入力）'),
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => EkinetWebViewPage(routeInfo: info),
-              ));
-            },
-          ),
+          ..._buildServiceButtons(info),
         ] else ...[
           Card(
             color: Theme.of(context).colorScheme.errorContainer,
@@ -134,6 +173,29 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+}
+
+class _ServiceButton extends StatelessWidget {
+  const _ServiceButton({
+    required this.icon,
+    required this.label,
+    required this.primary,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool primary;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return primary
+        ? FilledButton.icon(
+            icon: Icon(icon), label: Text(label), onPressed: onPressed)
+        : FilledButton.tonalIcon(
+            icon: Icon(icon), label: Text(label), onPressed: onPressed);
   }
 }
 
