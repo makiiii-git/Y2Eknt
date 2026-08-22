@@ -117,6 +117,7 @@ class _HomePageState extends State<HomePage> {
       icon: Icons.train,
       label: 'えきねっとで検索（条件を自動入力）',
       primary: !info.usesTokaidoSanyoKyushu,
+      color: const Color(0xFF00A044), // えきねっとグリーン
       onPressed: () {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => EkinetWebViewPage(routeInfo: info),
@@ -127,6 +128,7 @@ class _HomePageState extends State<HomePage> {
       icon: Icons.directions_railway,
       label: 'EXアプリで開く（東海道・山陽・九州新幹線）',
       primary: info.usesTokaidoSanyoKyushu,
+      color: const Color(0xFF0053A6), // EX予約ブルー
       onPressed: () => _openExApp(info),
     );
     return info.usesTokaidoSanyoKyushu
@@ -181,21 +183,34 @@ class _ServiceButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.primary,
+    required this.color,
     required this.onPressed,
   });
 
   final IconData icon;
   final String label;
   final bool primary;
+
+  /// サービスのブランドカラー（えきねっと=緑、EX予約=青）。
+  final Color color;
+
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return primary
-        ? FilledButton.icon(
-            icon: Icon(icon), label: Text(label), onPressed: onPressed)
-        : FilledButton.tonalIcon(
-            icon: Icon(icon), label: Text(label), onPressed: onPressed);
+    // 優先ボタンは濃色地に白文字、非優先は淡色地にブランド色文字
+    final style = primary
+        ? FilledButton.styleFrom(
+            backgroundColor: color, foregroundColor: Colors.white)
+        : FilledButton.styleFrom(
+            backgroundColor: color.withValues(alpha: 0.12),
+            foregroundColor: color);
+    return FilledButton.icon(
+      icon: Icon(icon),
+      label: Text(label),
+      style: style,
+      onPressed: onPressed,
+    );
   }
 }
 
