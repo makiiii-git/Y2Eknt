@@ -24,7 +24,7 @@ class ReleaseInfo {
 class UpdateChecker {
   UpdateChecker({http.Client? client}) : _client = client ?? http.Client();
 
-  static const String repo = 'makiiii-git/Y2Ekinet';
+  static const String repo = 'makiiii-git/Y2Eknt';
 
   final http.Client _client;
 

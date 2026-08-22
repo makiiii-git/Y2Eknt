@@ -18,4 +18,18 @@ class AppSettings {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyExEnabled, value);
   }
+
+  static const _keyAutoOpen = 'auto_open_ekinet';
+
+  /// 共有テキストの解析に成功したら、ボタンを押さずに自動で
+  /// えきねっと（WebView）へ遷移するか。既定は無効（ボタンで開く）。
+  static Future<bool> getAutoOpen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAutoOpen) ?? false;
+  }
+
+  static Future<void> setAutoOpen(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAutoOpen, value);
+  }
 }

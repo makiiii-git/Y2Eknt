@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:y2ekinet/route_parser.dart';
+import 'package:y2eknt/route_parser.dart';
 
 /// 2026-08-22 に Pixel 7 の Yahoo!乗換案内 (Y!乗換案内) 共有機能から
 /// 実際に取得したテキスト（全角スペース・波ダッシュ含め原文どおり）。

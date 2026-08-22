@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:y2ekinet/update_checker.dart';
+import 'package:y2eknt/update_checker.dart';
 
 void main() {
   group('UpdateChecker.isNewer', () {

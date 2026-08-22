@@ -17,6 +17,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _currentVersion = '';
   bool _checking = false;
   bool _exEnabled = false;
+  bool _autoOpen = false;
 
   @override
   void initState() {
@@ -27,11 +28,19 @@ class _SettingsPageState extends State<SettingsPage> {
     AppSettings.getExEnabled().then((v) {
       if (mounted) setState(() => _exEnabled = v);
     });
+    AppSettings.getAutoOpen().then((v) {
+      if (mounted) setState(() => _autoOpen = v);
+    });
   }
 
   Future<void> _setExEnabled(bool value) async {
     setState(() => _exEnabled = value);
     await AppSettings.setExEnabled(value);
+  }
+
+  Future<void> _setAutoOpen(bool value) async {
+    setState(() => _autoOpen = value);
+    await AppSettings.setAutoOpen(value);
   }
 
   Future<void> _checkUpdate() async {
@@ -89,12 +98,33 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text('共有受信時の動作'),
+          ),
+          RadioListTile<bool>(
+            title: const Text('ボタンで選んで開く'),
+            subtitle: const Text('解析結果を確認してから予約サービスを開きます'),
+            value: false,
+            groupValue: _autoOpen,
+            onChanged: (v) => _setAutoOpen(v!),
+          ),
+          RadioListTile<bool>(
+            title: const Text('自動で開く'),
+            subtitle: const Text('共有後すぐに予約サービスへ移動します。'
+                '東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、'
+                'それ以外はえきねっとへ自動で振り分けます'),
+            value: true,
+            groupValue: _autoOpen,
+            onChanged: (v) => _setAutoOpen(v!),
+          ),
+          const Divider(),
           SwitchListTile(
             secondary: const Icon(Icons.directions_railway),
-            title: const Text('EXアプリ連携'),
+            title: const Text('EX予約連携（Web版）'),
             subtitle: const Text(
-                '東海道・山陽・九州新幹線の経路でEXアプリを開くボタンを表示します。'
-                '検索条件は引き継げないため、経路情報のコピーで入力を補助します'),
+                '東海道・山陽・九州新幹線の経路でEX予約（Web版）を開くボタンを表示します。'
+                'ログイン後の検索フォームへ条件の自動入力を試みます'),
             value: _exEnabled,
             onChanged: _setExEnabled,
           ),

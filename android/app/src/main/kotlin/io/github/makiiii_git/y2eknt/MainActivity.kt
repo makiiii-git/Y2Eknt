@@ -1,4 +1,4 @@
-package io.github.makiiii_git.y2ekinet
+package io.github.makiiii_git.y2eknt
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val channelName = "io.github.makiiii_git.y2ekinet/share"
+    private val channelName = "io.github.makiiii_git.y2eknt/share"
     private var sharedText: String? = null
     private var channel: MethodChannel? = null
 

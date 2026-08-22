@@ -2,7 +2,7 @@
     <!-- えきねっとWebView・更新チェックの通信に必要 -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="Y2Ekinet"
+        android:label="Y2Eknt"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

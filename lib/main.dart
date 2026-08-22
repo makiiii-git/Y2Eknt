@@ -3,22 +3,22 @@ import 'package:flutter/services.dart';
 
 import 'app_settings.dart';
 import 'ekinet_webview_page.dart';
-import 'ex_launcher.dart';
+import 'ex_webview_page.dart';
 import 'route_parser.dart';
 import 'settings_page.dart';
 import 'share_intent.dart';
 
 void main() {
-  runApp(const Y2EkinetApp());
+  runApp(const Y2EkntApp());
 }
 
-class Y2EkinetApp extends StatelessWidget {
-  const Y2EkinetApp({super.key});
+class Y2EkntApp extends StatelessWidget {
+  const Y2EkntApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Y2Ekinet',
+      title: 'Y2Eknt',
       theme: ThemeData(
         // えきねっとのブランドカラーに合わせたグリーン
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00A044)),
@@ -61,20 +61,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _onText(String text) {
+  Future<void> _onText(String text) async {
     debugPrint('SHARED_TEXT_BEGIN\n$text\nSHARED_TEXT_END');
+    final result = RouteParser.parse(text);
     setState(() {
       _sharedText = text;
-      _parseResult = RouteParser.parse(text);
+      _parseResult = result;
     });
+    final info = result.routeInfo;
+    if (info != null && await AppSettings.getAutoOpen()) {
+      // 起動直後でも確実に判定できるよう設定を直接読む
+      final exEnabled = await AppSettings.getExEnabled();
+      _autoOpen(info, exEnabled && info.usesTokaidoSanyoKyushu);
+    }
   }
 
-  Future<void> _openExApp(RouteInfo info) async {
-    // アプリがバックグラウンドに回る前に案内を出す
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('経路情報をコピーしました。EXアプリの検索画面に貼り付けてご利用ください'),
+  /// 自動モード: 共有受信後すぐに予約サービスへ遷移する。
+  /// 東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、
+  /// それ以外はえきねっとへ自動で振り分ける。
+  void _autoOpen(RouteInfo info, bool useEx) {
+    if (!mounted) return;
+    final nav = Navigator.of(context);
+    // 連続共有でWebViewが積み重ならないようホームまで戻してから開く
+    nav.popUntil((route) => route.isFirst);
+    nav.push(MaterialPageRoute(
+      builder: (_) => useEx
+          ? ExWebViewPage(routeInfo: info)
+          : EkinetWebViewPage(routeInfo: info),
     ));
-    await ExLauncher.launch(info);
   }
 
   Future<void> _copyText() async {
@@ -90,7 +104,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Y2Ekinet'),
+        title: const Text('Y2Eknt'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -114,7 +128,7 @@ class _HomePageState extends State<HomePage> {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'Yahoo!乗換案内の経路詳細画面から\n「共有」→「他のアプリに共有」で\nY2Ekinetにテキストを送ってください',
+          'Yahoo!乗換案内の経路詳細画面から\n「共有」→「他のアプリに共有」で\nY2Ekntにテキストを送ってください',
           textAlign: TextAlign.center,
         ),
       ),
@@ -138,10 +152,14 @@ class _HomePageState extends State<HomePage> {
     );
     final exButton = _ServiceButton(
       icon: Icons.directions_railway,
-      label: 'EXアプリで開く（東海道・山陽・九州新幹線）',
+      label: 'EX予約 Web版で検索（東海道・山陽新幹線）',
       primary: info.usesTokaidoSanyoKyushu,
       color: const Color(0xFF0053A6), // EX予約ブルー
-      onPressed: () => _openExApp(info),
+      onPressed: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ExWebViewPage(routeInfo: info),
+        ));
+      },
     );
     if (!exVisible) return [ekinetButton];
     return info.usesTokaidoSanyoKyushu

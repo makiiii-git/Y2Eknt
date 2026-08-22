@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:y2ekinet/ekinet.dart';
-import 'package:y2ekinet/route_parser.dart';
+import 'package:y2eknt/ekinet.dart';
+import 'package:y2eknt/route_parser.dart';
 
 void main() {
   group('Ekinet.buildAutofillScript', () {
