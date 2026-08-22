@@ -1,16 +1,31 @@
-# y2ekinet
+# Y2Ekinet
 
-A new Flutter project.
+Yahoo!乗換案内と「えきねっと」の公式連携終了に伴う不便を解消する個人用Android補助ツール。
 
-## Getting Started
+Yahoo!乗換案内の経路詳細画面から「共有」→「他のアプリに共有」→ Y2Ekinet を選ぶと、
+共有テキストを解析して出発駅・到着駅・乗車日・時刻を抽出し、
+えきねっとの検索ページ（アプリ内WebView）に条件を自動入力します。
+内容を確認して「列車を検索する」を押せば、そのまま予約へ進めます。
 
-This project is a starting point for a Flutter application.
+## 使い方
 
-A few resources to get you started if this is your first Flutter project:
+1. Yahoo!乗換案内で経路を検索し、経路詳細画面を開く
+2. 共有 →「他のアプリに共有」→ **Y2Ekinet** を選択
+3. 解析結果を確認し「えきねっとで検索（条件を自動入力）」をタップ
+4. えきねっとの検索フォームに条件が入った状態で開くので、確認して検索
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+解析に失敗した場合は「テキストをコピー」から手動入力できます。
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 技術メモ
+
+- Flutter 3.29.3（開発機のmacOS 12制約による固定。CIも同バージョン）
+- 共有インテント受信はプラグインを使わず MainActivity + MethodChannel の自前実装
+- えきねっとには外部公開の条件付き遷移URL（GETパラメータ）が存在しないため、
+  WebView + JavaScript でフォームへ自動入力する方式（2026-08 実サイト調査）
+- ログイン・予約操作はすべてユーザー自身が行う。認証情報は扱わない
+
+## リリース
+
+`Vx.x.x` 形式のタグ（例: `V1.0.0`）をプッシュすると、GitHub Actions が
+リリースAPKをビルドして GitHub Releases に添付します。
+mainへのプッシュでもビルドとアーティファクト保存が実行されます。
