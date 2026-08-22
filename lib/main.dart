@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'app_settings.dart';
 import 'ekinet_webview_page.dart';
@@ -9,6 +11,10 @@ import 'settings_page.dart';
 import 'share_intent.dart';
 
 void main() {
+  // 開発時のみWebViewをChrome DevToolsで検証できるようにする
+  if (kDebugMode) {
+    AndroidWebViewController.enableDebugging(true);
+  }
   runApp(const Y2EkntApp());
 }
 

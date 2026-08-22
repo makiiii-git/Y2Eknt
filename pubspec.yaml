@@ -39,6 +39,7 @@ dependencies:
   package_info_plus: ^9.0.1
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.3
+  webview_flutter_android: ^4.10.1
 
 dev_dependencies:
   flutter_test:
