@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'ex_credentials.dart';
 import 'ex_launcher.dart';
 import 'route_parser.dart';
 
@@ -25,9 +26,16 @@ class ExWebViewPage extends StatefulWidget {
 }
 
 class _ExWebViewPageState extends State<ExWebViewPage> {
+  /// EX予約（スマホ版）のログインフォームURL。
+  static const _loginFormUrl =
+      'https://shinkansen1.jr-central.co.jp/RSV_P/S_index.htm';
+
   late final WebViewController _controller;
   int _progress = 0;
   bool _filled = false;
+  bool _loginTried = false;
+  bool _menuNavigated = false;
+  ({String memberId, String password})? _credentials;
 
   @override
   void initState() {
@@ -37,13 +45,89 @@ class _ExWebViewPageState extends State<ExWebViewPage> {
       ..setNavigationDelegate(NavigationDelegate(
         onProgress: (p) => setState(() => _progress = p),
         onPageFinished: _onPageFinished,
-      ))
-      ..loadRequest(Uri.parse('https://expy.jp/login/'));
+      ));
+    _start();
+  }
+
+  Future<void> _start() async {
+    // ログイン情報が登録されていればログインフォームへ直行して自動ログイン、
+    // 無ければ従来どおり案内ページから（ログインはユーザー操作）
+    _credentials = await ExCredentials.load();
+    await _controller.loadRequest(Uri.parse(
+        _credentials != null ? _loginFormUrl : 'https://expy.jp/login/'));
   }
 
   Future<void> _onPageFinished(String url) async {
     await _dumpFormStructure(url);
+    await _tryAutoLogin(url);
+    await _tryOpenSearchMenu(url);
     await _tryAutofill(url);
+  }
+
+  /// 登録済みログイン情報でログインフォームを自動送信する（1回だけ）。
+  /// SMS認証などの追加ステップが出た場合はユーザー操作に委ねる。
+  Future<void> _tryAutoLogin(String url) async {
+    final creds = _credentials;
+    if (creds == null || _loginTried || !url.contains('S_index.htm')) return;
+    try {
+      final result = await _controller.runJavaScriptReturningResult('''
+(function() {
+  var id = document.getElementsByName('01')[0];
+  var pw = document.getElementsByName('02')[0];
+  var btn = document.getElementsByName('05')[0];
+  if (!id || !pw || !btn) return 'skip';
+  id.value = '${_js(creds.memberId)}';
+  pw.value = '${_js(creds.password)}';
+  id.dispatchEvent(new Event('input', {bubbles: true}));
+  pw.dispatchEvent(new Event('input', {bubbles: true}));
+  btn.click();
+  return 'submitted';
+})()
+''');
+      if (result.toString().contains('submitted')) {
+        _loginTried = true;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('登録済みのログイン情報でログインしています…')));
+        }
+      }
+    } catch (_) {
+      // 失敗時はユーザーの手動ログインに委ねる
+    }
+  }
+
+  /// ログイン後のメニューで「列車を検索」を自動で開く（1回だけ）。
+  /// 自動ログインを使うフロー（ログイン情報登録済み）のときだけ動作する。
+  Future<void> _tryOpenSearchMenu(String url) async {
+    if (_credentials == null ||
+        _menuNavigated ||
+        _filled ||
+        !url.contains('/RSV_P/')) {
+      return;
+    }
+    try {
+      final result = await _controller.runJavaScriptReturningResult('''
+(function() {
+  // 検索フォームがあるページでは何もしない
+  if (document.getElementsByName('s6')[0]) return 'skip';
+  var els = document.querySelectorAll('a, div, li, span');
+  for (var i = 0; i < els.length; i++) {
+    var t = (els[i].textContent || '').trim();
+    if (t === '列車を検索') {
+      var target = els[i].closest('a') || els[i];
+      target.click();
+      return 'clicked';
+    }
+  }
+  return 'not-found';
+})()
+''');
+      if (result.toString().contains('clicked')) {
+        _menuNavigated = true;
+      }
+    } catch (_) {
+      // メニュー以外のページでは無視
+    }
   }
 
   /// フォーム構造（フィールド名・ID・selectの選択肢）をログに出力する。
