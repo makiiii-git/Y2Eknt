@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'share_intent.dart';
@@ -37,6 +38,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadInitialText();
     ShareIntent.setOnSharedText((text) {
+      debugPrint('SHARED_TEXT_BEGIN\n$text\nSHARED_TEXT_END');
       setState(() => _sharedText = text);
     });
   }
@@ -44,6 +46,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadInitialText() async {
     final text = await ShareIntent.getInitialText();
     if (text != null && mounted) {
+      debugPrint('SHARED_TEXT_BEGIN\n$text\nSHARED_TEXT_END');
       setState(() => _sharedText = text);
     }
   }
