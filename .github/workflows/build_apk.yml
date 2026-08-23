@@ -35,13 +35,16 @@ jobs:
 
       - run: flutter build apk --release
 
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/Y2Eknt.apk
+
       - uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: Y2Eknt-apk
+          path: build/app/outputs/flutter-apk/Y2Eknt.apk
 
       - name: Upload to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/V')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/Y2Eknt.apk

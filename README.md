@@ -18,7 +18,7 @@ Yahoo!乗換案内の経路詳細画面で「共有」→ Y2Eknt を選ぶと、
 
 ## インストール
 
-[Releases](https://github.com/makiiii-git/Y2Eknt/releases) から最新の `app-release.apk` をダウンロードしてインストールしてください。
+[Releases](https://github.com/makiiii-git/Y2Eknt/releases) から最新の `Y2Eknt.apk` をダウンロードしてインストールしてください。
 
 ## 使い方
 
