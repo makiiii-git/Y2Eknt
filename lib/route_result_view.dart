@@ -1,4 +1,4 @@
-import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -29,7 +29,9 @@ class RouteResultView extends StatelessWidget {
   }
 
   /// カレンダーアプリの予定作成画面を開く（乗車日・時刻・経路入り）。
-  void _addToCalendar(RouteInfo info) {
+  /// 毎回アプリ選択ダイアログを表示し、Googleカレンダー・Outlookなど
+  /// 登録先をその都度選べるようにする。
+  Future<void> _addToCalendar(RouteInfo info) async {
     DateTime parseTime(String hhmm, DateTime base) {
       final p = hhmm.split(':');
       return DateTime(
@@ -52,14 +54,20 @@ class RouteResultView extends StatelessWidget {
         .whereType<String>()
         .where((t) => t.contains('新幹線') || t.contains('特急'))
         .join(' / ');
-    Add2Calendar.addEvent2Cal(Event(
-      title: '${info.departureStation} → ${info.arrivalStation}'
-          '${trainNames.isNotEmpty ? '（$trainNames）' : ''}',
-      description: text,
-      location: '${info.departureStation}駅',
-      startDate: start,
-      endDate: end,
-    ));
+    final intent = AndroidIntent(
+      action: 'android.intent.action.INSERT',
+      type: 'vnd.android.cursor.item/event',
+      arguments: {
+        'title': '${info.departureStation} → ${info.arrivalStation}'
+            '${trainNames.isNotEmpty ? '（$trainNames）' : ''}',
+        'description': text,
+        'eventLocation': '${info.departureStation}駅',
+        // CalendarContract.EXTRA_EVENT_BEGIN_TIME / END_TIME (long)
+        'beginTime': start.millisecondsSinceEpoch,
+        'endTime': end.millisecondsSinceEpoch,
+      },
+    );
+    await intent.launchChooser('カレンダーに登録');
   }
 
   /// 予約サービスへのボタン群。経路の列車に応じて優先順を入れ替える。
