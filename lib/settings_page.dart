@@ -79,13 +79,13 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// 無料版で「自動で開く」を選ぼうとしたときの案内。
-  Future<void> _promptPremium() async {
+  /// 無料版でプレミアム限定の機能を選ぼうとしたときの案内。
+  Future<void> _promptPremium(String featureName) async {
     final buy = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('プレミアム機能'),
-        content: Text('「自動で開く」はプレミアム限定の機能です。\n'
+        content: Text('「$featureName」はプレミアム限定の機能です。\n'
             'プレミアムでは広告の非表示と履歴の無制限表示も有効になります。'
             '${_premiumProduct != null ? '\n\n価格: ${_premiumProduct!.price}' : ''}'),
         actions: [
@@ -168,6 +168,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setExEnabled(bool value) async {
+    // EX予約連携はプレミアム限定
+    if (value && !PremiumManager.instance.isPremium.value) {
+      await _promptPremium('EX予約連携');
+      return;
+    }
     setState(() => _exEnabled = value);
     await AppSettings.setExEnabled(value);
   }
@@ -175,7 +180,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _setAutoOpen(bool value) async {
     // 自動で開くはプレミアム限定
     if (value && !PremiumManager.instance.isPremium.value) {
-      await _promptPremium();
+      await _promptPremium('自動で開く');
       return;
     }
     setState(() => _autoOpen = value);
@@ -234,9 +239,10 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final isPremium = PremiumManager.instance.isPremium.value;
-    // 無料版では自動で開く設定が残っていても実際には動作しないため
-    // 表示上も「ボタンで選んで開く」に寄せる
+    // 無料版ではプレミアム限定の設定が残っていても実際には動作しないため
+    // 表示上もOFF側に寄せる
     final effectiveAutoOpen = isPremium && _autoOpen;
+    final effectiveExEnabled = isPremium && _exEnabled;
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
@@ -282,7 +288,7 @@ class _SettingsPageState extends State<SettingsPage> {
               leading: Icon(Icons.verified,
                   color: Theme.of(context).colorScheme.primary),
               title: const Text('プレミアム購入済み'),
-              subtitle: const Text('広告非表示・履歴の無制限表示・自動で開くが有効です'),
+              subtitle: const Text('広告非表示・履歴の無制限表示・自動で開く・EX予約連携が有効です'),
             )
           else ...[
             ListTile(
@@ -294,7 +300,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     )
                   : const Icon(Icons.workspace_premium),
               title: const Text('プレミアムにアップグレード'),
-              subtitle: Text('広告の非表示、履歴の無制限表示、自動で開くが使えます'
+              subtitle: Text('広告の非表示、履歴の無制限表示、自動で開く、EX予約連携が使えます'
                   '${_premiumProduct != null ? '（${_premiumProduct!.price}）' : ''}'),
               enabled: !_purchasing,
               onTap: _buyPremium,
@@ -308,15 +314,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
           const Divider(),
           SwitchListTile(
-            secondary: const Icon(Icons.directions_railway),
+            secondary: Icon(
+              isPremium ? Icons.directions_railway : Icons.lock_outline,
+            ),
             title: const Text('EX予約連携（Web版）'),
-            subtitle: const Text(
-                '東海道・山陽・九州新幹線の経路でEX予約（Web版）を開くボタンを表示します。'
+            subtitle: Text(
+                '${isPremium ? '' : '【プレミアム限定】'}東海道・山陽・九州新幹線の経路でEX予約（Web版）を開くボタンを表示します。'
                 'ログイン後の検索フォームへ条件の自動入力を試みます'),
-            value: _exEnabled,
+            value: effectiveExEnabled,
             onChanged: _setExEnabled,
           ),
-          if (_exEnabled)
+          if (effectiveExEnabled)
             ListTile(
               leading: Icon(
                 _hasExCredentials ? Icons.key : Icons.key_off,

@@ -53,8 +53,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String? _sharedText;
-  bool _exEnabled = false;
+
+  /// 設定画面でのEX連携のON/OFF。実際に有効かは[_isExActive]で判定する。
+  bool _exSetting = false;
   List<HistoryEntry> _history = [];
+
+  /// EX予約連携はプレミアム限定。設定がONでも無料版では無効。
+  bool get _isExActive => _exSetting && PremiumManager.instance.isPremium.value;
 
   @override
   void initState() {
@@ -67,7 +72,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadSettings() async {
     final exEnabled = await AppSettings.getExEnabled();
-    if (mounted) setState(() => _exEnabled = exEnabled);
+    if (mounted) setState(() => _exSetting = exEnabled);
   }
 
   Future<void> _loadHistory() async {
@@ -97,7 +102,11 @@ class _HomePageState extends State<HomePage> {
         await AppSettings.getAutoOpen()) {
       // 起動直後でも確実に判定できるよう設定を直接読む
       final exEnabled = await AppSettings.getExEnabled();
-      _autoOpen(info, exEnabled && info.usesTokaidoSanyoKyushu);
+      _autoOpen(
+          info,
+          exEnabled &&
+              PremiumManager.instance.isPremium.value &&
+              info.usesTokaidoSanyoKyushu);
     }
   }
 
@@ -118,7 +127,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openHistoryDetail(HistoryEntry entry) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => HistoryDetailPage(entry: entry, exEnabled: _exEnabled),
+      builder: (_) => HistoryDetailPage(entry: entry, exEnabled: _isExActive),
     ));
     _loadHistory();
   }
@@ -175,7 +184,7 @@ class _HomePageState extends State<HomePage> {
                 _loadSettings();
               },
             )
-          : RouteResultView(text: _sharedText!, exEnabled: _exEnabled),
+          : RouteResultView(text: _sharedText!, exEnabled: _isExActive),
       // 無料版のみホーム画面下部にバナー広告を表示する
       bottomNavigationBar:
           (!isPremium && _sharedText == null) ? const AdBanner() : null,

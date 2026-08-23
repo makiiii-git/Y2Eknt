@@ -8,7 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// 購入状態の正はGoogle Play Billingで、SharedPreferencesのキャッシュは
 /// 起動直後の表示用。起動時のrestorePurchases()とpurchaseStreamで同期する。
-/// プレミアムで解放される機能: 広告非表示・履歴の無制限・自動で開く。
+/// プレミアムで解放される機能:
+/// 広告非表示・履歴の無制限・自動で開く・EX予約連携。
 class PremiumManager {
   PremiumManager._();
 
