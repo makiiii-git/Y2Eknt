@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'app_settings.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
+import 'history_detail_page.dart';
+import 'route_history.dart';
 import 'route_parser.dart';
+import 'route_result_view.dart';
 import 'settings_page.dart';
 import 'share_intent.dart';
 
@@ -44,13 +46,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String? _sharedText;
-  ParseResult? _parseResult;
   bool _exEnabled = false;
+  List<HistoryEntry> _history = [];
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadHistory();
     _loadInitialText();
     ShareIntent.setOnSharedText(_onText);
   }
@@ -58,6 +61,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadSettings() async {
     final exEnabled = await AppSettings.getExEnabled();
     if (mounted) setState(() => _exEnabled = exEnabled);
+  }
+
+  Future<void> _loadHistory() async {
+    final history = await RouteHistory.load();
+    if (mounted) setState(() => _history = history);
   }
 
   Future<void> _loadInitialText() async {
@@ -70,10 +78,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _onText(String text) async {
     debugPrint('SHARED_TEXT_BEGIN\n$text\nSHARED_TEXT_END');
     final result = RouteParser.parse(text);
-    setState(() {
-      _sharedText = text;
-      _parseResult = result;
-    });
+    setState(() => _sharedText = text);
+    if (result.isSuccess) {
+      await RouteHistory.add(text);
+      await _loadHistory();
+    }
     final info = result.routeInfo;
     if (info != null && await AppSettings.getAutoOpen()) {
       // 起動直後でも確実に判定できるよう設定を直接読む
@@ -97,13 +106,11 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  Future<void> _copyText() async {
-    final text = _sharedText;
-    if (text == null) return;
-    await Clipboard.setData(ClipboardData(text: text));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('テキストをコピーしました')));
+  Future<void> _openHistoryDetail(HistoryEntry entry) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => HistoryDetailPage(entry: entry, exEnabled: _exEnabled),
+    ));
+    _loadHistory();
   }
 
   @override
@@ -112,6 +119,12 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('Y2Eknt'),
         actions: [
+          if (_sharedText != null)
+            IconButton(
+              icon: const Icon(Icons.home_outlined),
+              tooltip: 'ホームへ戻る',
+              onPressed: () => setState(() => _sharedText = null),
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '設定',
@@ -125,188 +138,122 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _sharedText == null ? _buildEmpty() : _buildResult(),
+      body: _sharedText == null
+          ? _HomeBody(
+              history: _history,
+              onTapEntry: _openHistoryDetail,
+              onDeleteEntry: (entry) async {
+                await RouteHistory.remove(entry);
+                _loadHistory();
+              },
+            )
+          : RouteResultView(text: _sharedText!, exEnabled: _exEnabled),
     );
   }
+}
 
-  Widget _buildEmpty() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-          'Yahoo!乗換案内の経路詳細画面から\n「共有」→「他のアプリに共有」で\nY2Ekntにテキストを送ってください',
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
+/// ホーム画面: 使い方の案内と検索履歴カードの一覧。
+class _HomeBody extends StatelessWidget {
+  const _HomeBody({
+    required this.history,
+    required this.onTapEntry,
+    required this.onDeleteEntry,
+  });
 
-  /// 予約サービスへのボタン群。経路の列車に応じて優先順を入れ替える。
-  /// EXアプリ連携は設定で有効にした場合のみ表示する（既定は無効）。
-  List<Widget> _buildServiceButtons(RouteInfo info) {
-    final exVisible = _exEnabled;
-    final ekinetButton = _ServiceButton(
-      icon: Icons.train,
-      label: 'えきねっとで検索（条件を自動入力）',
-      primary: !exVisible || !info.usesTokaidoSanyoKyushu,
-      color: const Color(0xFF00A044), // えきねっとグリーン
-      onPressed: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => EkinetWebViewPage(routeInfo: info),
-        ));
-      },
-    );
-    final exButton = _ServiceButton(
-      icon: Icons.directions_railway,
-      label: 'EX予約 Web版で検索（東海道・山陽新幹線）',
-      primary: info.usesTokaidoSanyoKyushu,
-      color: const Color(0xFF0053A6), // EX予約ブルー
-      onPressed: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ExWebViewPage(routeInfo: info),
-        ));
-      },
-    );
-    if (!exVisible) return [ekinetButton];
-    return info.usesTokaidoSanyoKyushu
-        ? [exButton, const SizedBox(height: 8), ekinetButton]
-        : [ekinetButton, const SizedBox(height: 8), exButton];
-  }
+  final List<HistoryEntry> history;
+  final void Function(HistoryEntry) onTapEntry;
+  final void Function(HistoryEntry) onDeleteEntry;
 
-  Widget _buildResult() {
-    final result = _parseResult!;
-    final info = result.routeInfo;
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (info != null) ...[
-          _RouteSummaryCard(info: info),
-          const SizedBox(height: 16),
-          ..._buildServiceButtons(info),
-        ] else ...[
-          Card(
-            color: Theme.of(context).colorScheme.errorContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('経路を解析できませんでした：${result.error}\n'
-                  '下のテキストをコピーして、えきねっとに手動で入力してください。'),
+        Card(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Yahoo!乗換案内の経路詳細画面から「共有」→「他のアプリに共有」→ '
+              'Y2Eknt でテキストを送ると、予約サービスの検索へつなぎます',
             ),
           ),
-        ],
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.copy),
-          label: const Text('テキストをコピー'),
-          onPressed: _copyText,
         ),
         const SizedBox(height: 16),
-        ExpansionTile(
-          title: const Text('受信したテキスト'),
-          initiallyExpanded: info == null,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: SelectableText(_sharedText!),
+        Text('検索履歴', style: textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (history.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              '履歴はまだありません',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
-          ],
-        ),
+          )
+        else
+          for (final entry in history)
+            _HistoryCard(
+              entry: entry,
+              onTap: () => onTapEntry(entry),
+              onDelete: () => onDeleteEntry(entry),
+            ),
       ],
     );
   }
 }
 
-class _ServiceButton extends StatelessWidget {
-  const _ServiceButton({
-    required this.icon,
-    required this.label,
-    required this.primary,
-    required this.color,
-    required this.onPressed,
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({
+    required this.entry,
+    required this.onTap,
+    required this.onDelete,
   });
 
-  final IconData icon;
-  final String label;
-  final bool primary;
-
-  /// サービスのブランドカラー（えきねっと=緑、EX予約=青）。
-  final Color color;
-
-  final VoidCallback onPressed;
+  final HistoryEntry entry;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    // 優先ボタンは濃色地に白文字、非優先は淡色地にブランド色文字
-    final style = primary
-        ? FilledButton.styleFrom(
-            backgroundColor: color, foregroundColor: Colors.white)
-        : FilledButton.styleFrom(
-            backgroundColor: color.withValues(alpha: 0.12),
-            foregroundColor: color);
-    return FilledButton.icon(
-      icon: Icon(icon),
-      label: Text(label),
-      style: style,
-      onPressed: onPressed,
-    );
-  }
-}
-
-class _RouteSummaryCard extends StatelessWidget {
-  const _RouteSummaryCard({required this.info});
-
-  final RouteInfo info;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final date = (info.year != null)
-        ? '${info.year}年${info.month}月${info.day}日'
+    final info = RouteParser.parse(entry.text).routeInfo;
+    final isEx = info?.usesTokaidoSanyoKyushu ?? false;
+    final color =
+        isEx ? const Color(0xFF0053A6) : const Color(0xFF00A044);
+    final title = info != null
+        ? '${info.departureStation} → ${info.arrivalStation}'
+        : '（解析できない履歴）';
+    final date = (info?.year != null)
+        ? '${info!.year}/${info.month}/${info.day}'
         : null;
-    final time = (info.departureTime != null)
-        ? '${info.departureTime} 発 → ${info.arrivalTime ?? '?'} 着'
-        : null;
-    // 地下鉄・私鉄のアクセス区間を除いたJR区間が経路全体と異なる場合に表示
-    final seg = info.jrSegment;
-    final showJrSegment = seg.fromStation != info.departureStation ||
-        seg.toStation != info.arrivalStation;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${info.departureStation} → ${info.arrivalStation}',
-              style: textTheme.titleLarge,
-            ),
-            if (date != null) Text(date, style: textTheme.bodyLarge),
-            if (time != null) Text(time, style: textTheme.bodyLarge),
-            if (showJrSegment)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '予約対象（JR区間）: ${seg.fromStation} → ${seg.toStation}'
-                  '${seg.departureTime != null ? '  ${seg.departureTime}発' : ''}',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            if (info.legs.isNotEmpty) ...[
-              const Divider(),
-              for (final leg in info.legs)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    '${leg.fromStation} → ${leg.toStation}'
-                    '${leg.departureTime != null ? '  ${leg.departureTime}〜${leg.arrivalTime}' : ''}'
-                    '${leg.trainName != null ? '\n${leg.trainName}' : ''}',
-                    style: textTheme.bodyMedium,
-                  ),
-                ),
-            ],
-          ],
+    final subtitle = [
+      if (date != null) date,
+      if (info?.departureTime != null) '${info!.departureTime}発',
+    ].join('  ');
+
+    return Dismissible(
+      key: ValueKey(entry.text.hashCode ^ entry.receivedAt.hashCode),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: const Icon(Icons.delete_outline),
+      ),
+      onDismissed: (_) => onDelete(),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: Icon(
+            isEx ? Icons.directions_railway : Icons.train,
+            color: color,
+          ),
+          title: Text(title),
+          subtitle: subtitle.isEmpty ? null : Text(subtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onTap,
         ),
       ),
     );
