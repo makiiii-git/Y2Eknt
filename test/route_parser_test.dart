@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:y2eknt/route_parser.dart';
 
-/// 2026-08-22 に Pixel 7 の Yahoo!乗換案内 (Y!乗換案内) 共有機能から
-/// 実際に取得したテキスト（全角スペース・波ダッシュ含め原文どおり）。
+/// 2026-08-22 に Yahoo!乗換案内 (Y!乗換案内) の共有機能から実際に取得した
+/// テキスト（全角スペース・波ダッシュ含め原文どおり。短縮URLのみダミー化）。
 const realSample = '東京⇒仙台\n'
     '2026年08月28日\n'
     '11:20 ⇒ 12:51\n'
