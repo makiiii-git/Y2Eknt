@@ -33,6 +33,12 @@
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
+        <!-- AdMobアプリID。
+             TODO: リリース前にAdMobコンソールで発行した本番IDへ差し替えること
+             （現在はGoogle公式のテスト用ID。lib/ad_banner.dartの広告ユニットIDも同時に差し替える） -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

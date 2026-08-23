@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_settings.dart';
 import 'ex_credentials.dart';
+import 'premium.dart';
 import 'update_checker.dart';
 
 /// 設定画面。バージョン表示とアプリの更新チェックを行う。
@@ -20,6 +22,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _exEnabled = false;
   bool _autoOpen = false;
   bool _hasExCredentials = false;
+  ProductDetails? _premiumProduct;
+  bool _purchasing = false;
 
   @override
   void initState() {
@@ -36,6 +40,67 @@ class _SettingsPageState extends State<SettingsPage> {
     ExCredentials.exists.then((v) {
       if (mounted) setState(() => _hasExCredentials = v);
     });
+    PremiumManager.instance.isPremium.addListener(_onPremiumChanged);
+    PremiumManager.instance.fetchProduct().then((product) {
+      if (mounted) setState(() => _premiumProduct = product);
+    });
+  }
+
+  @override
+  void dispose() {
+    PremiumManager.instance.isPremium.removeListener(_onPremiumChanged);
+    super.dispose();
+  }
+
+  void _onPremiumChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (PremiumManager.instance.isPremium.value) {
+      _showMessage('プレミアムが有効になりました');
+    }
+  }
+
+  Future<void> _buyPremium() async {
+    setState(() => _purchasing = true);
+    final error = await PremiumManager.instance.buy();
+    if (mounted) {
+      setState(() => _purchasing = false);
+      if (error != null) _showMessage(error);
+    }
+  }
+
+  Future<void> _restorePremium() async {
+    final error = await PremiumManager.instance.restore();
+    if (!mounted) return;
+    if (error != null) {
+      _showMessage(error);
+    } else if (!PremiumManager.instance.isPremium.value) {
+      _showMessage('復元できる購入が見つかりませんでした');
+    }
+  }
+
+  /// 無料版で「自動で開く」を選ぼうとしたときの案内。
+  Future<void> _promptPremium() async {
+    final buy = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('プレミアム機能'),
+        content: Text('「自動で開く」はプレミアム限定の機能です。\n'
+            'プレミアムでは広告の非表示と履歴の無制限表示も有効になります。'
+            '${_premiumProduct != null ? '\n\n価格: ${_premiumProduct!.price}' : ''}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('購入する'),
+          ),
+        ],
+      ),
+    );
+    if (buy == true) await _buyPremium();
   }
 
   Future<void> _editExCredentials() async {
@@ -108,6 +173,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setAutoOpen(bool value) async {
+    // 自動で開くはプレミアム限定
+    if (value && !PremiumManager.instance.isPremium.value) {
+      await _promptPremium();
+      return;
+    }
     setState(() => _autoOpen = value);
     await AppSettings.setAutoOpen(value);
   }
@@ -163,6 +233,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isPremium = PremiumManager.instance.isPremium.value;
+    // 無料版では自動で開く設定が残っていても実際には動作しないため
+    // 表示上も「ボタンで選んで開く」に寄せる
+    final effectiveAutoOpen = isPremium && _autoOpen;
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
@@ -175,18 +249,63 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('ボタンで選んで開く'),
             subtitle: const Text('解析結果を確認してから予約サービスを開きます'),
             value: false,
-            groupValue: _autoOpen,
+            groupValue: effectiveAutoOpen,
             onChanged: (v) => _setAutoOpen(v!),
           ),
           RadioListTile<bool>(
-            title: const Text('自動で開く'),
-            subtitle: const Text('共有後すぐに予約サービスへ移動します。'
+            title: Row(
+              children: [
+                const Text('自動で開く'),
+                if (!isPremium) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.lock_outline,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ],
+              ],
+            ),
+            subtitle: Text(
+                '${isPremium ? '' : '【プレミアム限定】'}共有後すぐに予約サービスへ移動します。'
                 '東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、'
                 'それ以外はえきねっとへ自動で振り分けます'),
             value: true,
-            groupValue: _autoOpen,
+            groupValue: effectiveAutoOpen,
             onChanged: (v) => _setAutoOpen(v!),
           ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('プレミアム'),
+          ),
+          if (isPremium)
+            ListTile(
+              leading: Icon(Icons.verified,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('プレミアム購入済み'),
+              subtitle: const Text('広告非表示・履歴の無制限表示・自動で開くが有効です'),
+            )
+          else ...[
+            ListTile(
+              leading: _purchasing
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.workspace_premium),
+              title: const Text('プレミアムにアップグレード'),
+              subtitle: Text('広告の非表示、履歴の無制限表示、自動で開くが使えます'
+                  '${_premiumProduct != null ? '（${_premiumProduct!.price}）' : ''}'),
+              enabled: !_purchasing,
+              onTap: _buyPremium,
+            ),
+            ListTile(
+              leading: const Icon(Icons.restore),
+              title: const Text('購入を復元'),
+              subtitle: const Text('機種変更などで購入済みの場合はこちら'),
+              onTap: _restorePremium,
+            ),
+          ],
           const Divider(),
           SwitchListTile(
             secondary: const Icon(Icons.directions_railway),

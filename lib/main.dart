@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
+import 'ad_banner.dart';
 import 'app_settings.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
 import 'history_detail_page.dart';
+import 'premium.dart';
 import 'route_history.dart';
 import 'route_parser.dart';
 import 'route_result_view.dart';
@@ -13,10 +16,14 @@ import 'settings_page.dart';
 import 'share_intent.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   // 開発時のみWebViewをChrome DevToolsで検証できるようにする
   if (kDebugMode) {
     AndroidWebViewController.enableDebugging(true);
   }
+  // 購入状態の復元と広告SDKの初期化は起動をブロックせずに進める
+  PremiumManager.instance.init();
+  MobileAds.instance.initialize();
   runApp(const Y2EkntApp());
 }
 
@@ -84,7 +91,10 @@ class _HomePageState extends State<HomePage> {
       await _loadHistory();
     }
     final info = result.routeInfo;
-    if (info != null && await AppSettings.getAutoOpen()) {
+    // 自動で開くはプレミアム限定（購入前に設定済みでも無料時は無効）
+    if (info != null &&
+        PremiumManager.instance.isPremium.value &&
+        await AppSettings.getAutoOpen()) {
       // 起動直後でも確実に判定できるよう設定を直接読む
       final exEnabled = await AppSettings.getExEnabled();
       _autoOpen(info, exEnabled && info.usesTokaidoSanyoKyushu);
@@ -115,6 +125,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: PremiumManager.instance.isPremium,
+      builder: (context, isPremium, _) => _buildScaffold(context, isPremium),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, bool isPremium) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Y2Eknt'),
@@ -140,14 +157,28 @@ class _HomePageState extends State<HomePage> {
       ),
       body: _sharedText == null
           ? _HomeBody(
-              history: _history,
+              history: isPremium
+                  ? _history
+                  : _history.take(PremiumManager.freeHistoryLimit).toList(),
+              lockedCount: isPremium
+                  ? 0
+                  : _history.length - PremiumManager.freeHistoryLimit,
               onTapEntry: _openHistoryDetail,
               onDeleteEntry: (entry) async {
                 await RouteHistory.remove(entry);
                 _loadHistory();
               },
+              onTapLocked: () async {
+                await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const SettingsPage(),
+                ));
+                _loadSettings();
+              },
             )
           : RouteResultView(text: _sharedText!, exEnabled: _exEnabled),
+      // 無料版のみホーム画面下部にバナー広告を表示する
+      bottomNavigationBar:
+          (!isPremium && _sharedText == null) ? const AdBanner() : null,
     );
   }
 }
@@ -156,13 +187,19 @@ class _HomePageState extends State<HomePage> {
 class _HomeBody extends StatelessWidget {
   const _HomeBody({
     required this.history,
+    required this.lockedCount,
     required this.onTapEntry,
     required this.onDeleteEntry,
+    required this.onTapLocked,
   });
 
   final List<HistoryEntry> history;
+
+  /// 無料版の表示上限で隠れている履歴の件数（プレミアムなら0）。
+  final int lockedCount;
   final void Function(HistoryEntry) onTapEntry;
   final void Function(HistoryEntry) onDeleteEntry;
+  final VoidCallback onTapLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -193,13 +230,21 @@ class _HomeBody extends StatelessWidget {
                   color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           )
-        else
+        else ...[
           for (final entry in history)
             _HistoryCard(
               entry: entry,
               onTap: () => onTapEntry(entry),
               onDelete: () => onDeleteEntry(entry),
             ),
+          if (lockedCount > 0)
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: Text('ほかに$lockedCount件の履歴があります'),
+              subtitle: const Text('プレミアムにアップグレードするとすべて表示できます'),
+              onTap: onTapLocked,
+            ),
+        ],
       ],
     );
   }
