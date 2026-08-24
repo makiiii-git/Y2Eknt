@@ -207,4 +207,65 @@ void main() {
       expect(result.error, contains('出発駅'));
     });
   });
+
+  group('RouteParser.normalizeStation 都道府県の接尾辞', () {
+    test('全角括弧の都道府県を取り除く', () {
+      expect(RouteParser.normalizeStation('大宮（埼玉）'), '大宮');
+      expect(RouteParser.normalizeStation('府中（東京）'), '府中');
+      expect(RouteParser.normalizeStation('白山（石川）'), '白山');
+      expect(RouteParser.normalizeStation('大山（神奈川）'), '大山');
+    });
+
+    test('半角括弧でも取り除く', () {
+      expect(RouteParser.normalizeStation('大宮(埼玉)'), '大宮');
+    });
+
+    test('都道府県以外の括弧は残す', () {
+      expect(RouteParser.normalizeStation('新宿（西口）'), '新宿（西口）');
+      expect(RouteParser.normalizeStation('駅前（バス）'), '駅前（バス）');
+    });
+
+    test('括弧が無い駅名はそのまま', () {
+      expect(RouteParser.normalizeStation('東京'), '東京');
+      expect(RouteParser.normalizeStation('新大阪'), '新大阪');
+    });
+
+    test('北海道・和歌山・鹿児島など長い県名も取り除く', () {
+      expect(RouteParser.normalizeStation('大川（北海道）'), '大川');
+      expect(RouteParser.normalizeStation('北山（和歌山）'), '北山');
+      expect(RouteParser.normalizeStation('中央（鹿児島）'), '中央');
+    });
+  });
+
+  group('RouteParser 都道府県つき駅名の経路', () {
+    const sample = '大宮（埼玉）⇒金沢\n'
+        '2026年10月03日\n'
+        '08:30 ⇒ 10:32\n'
+        '------------------------------\n'
+        '乗換　0回\n'
+        '------------------------------\n'
+        '\n'
+        '■大宮（埼玉）\n'
+        '↓ 08:30～10:32\n'
+        '↓ ＪＲ新幹線かがやき505号  金沢行\n'
+        '■金沢\n';
+
+    test('出発駅・到着駅から接尾辞が取り除かれる', () {
+      final info = RouteParser.parse(sample).routeInfo!;
+      expect(info.departureStation, '大宮');
+      expect(info.arrivalStation, '金沢');
+    });
+
+    test('区間の駅名からも接尾辞が取り除かれる', () {
+      final info = RouteParser.parse(sample).routeInfo!;
+      expect(info.legs.single.fromStation, '大宮');
+      expect(info.legs.single.toStation, '金沢');
+    });
+
+    test('えきねっとへ渡すJR区間も接尾辞なし', () {
+      final seg = RouteParser.parse(sample).routeInfo!.jrSegment;
+      expect(seg.fromStation, '大宮');
+      expect(seg.toStation, '金沢');
+    });
+  });
 }

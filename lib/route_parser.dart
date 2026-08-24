@@ -152,6 +152,27 @@ class RouteParser {
   /// 「■東京」の駅行。
   static final _stationRe = RegExp(r'^■(.+)$');
 
+  /// 同名駅を区別するためYahoo!乗換案内が付ける都道府県の接尾辞。
+  /// 例: 「大宮（埼玉）」「府中（東京）」。えきねっとの駅名入力では
+  /// この接尾辞があると駅を特定できないため取り除く。
+  ///
+  /// 括弧内が47都道府県名のときだけ除去し、駅名そのものに含まれる
+  /// 括弧（「新宿（西口）」のようなバス停表記など）は残す。
+  static final _prefectureSuffixRe = RegExp(
+    r'[（(](?:'
+    '北海道|青森|岩手|宮城|秋田|山形|福島|'
+    '茨城|栃木|群馬|埼玉|千葉|東京|神奈川|'
+    '新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|'
+    '滋賀|京都|大阪|兵庫|奈良|和歌山|'
+    '鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|'
+    '福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄'
+    r')[）)]\s*$',
+  );
+
+  /// 駅名から都道府県の接尾辞を取り除く。
+  static String normalizeStation(String name) =>
+      name.replaceFirst(_prefectureSuffixRe, '').trim();
+
   /// フッター以降（URL・注記）を打ち切る行。
   static final _footerRe = RegExp(r'^(?:---$|★|\(運賃内訳\)|https?://)');
 
@@ -177,8 +198,8 @@ class RouteParser {
         final m = _headerRe.firstMatch(line);
         // 「東京⇒仙台」のみ対象（時刻行 11:20 ⇒ 12:51 と区別する）
         if (m != null && !line.contains(':')) {
-          depStation = m.group(1)!.trim();
-          arrStation = m.group(2)!.trim();
+          depStation = normalizeStation(m.group(1)!);
+          arrStation = normalizeStation(m.group(2)!);
           continue;
         }
       }
@@ -208,7 +229,7 @@ class RouteParser {
       if (_footerRe.hasMatch(line)) break;
       final s = _stationRe.firstMatch(line);
       if (s != null) {
-        final station = s.group(1)!.trim();
+        final station = normalizeStation(s.group(1)!);
         if (currentStation != null) {
           legs.add(TrainLeg(
             fromStation: currentStation,
