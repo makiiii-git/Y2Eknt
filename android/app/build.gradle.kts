@@ -17,7 +17,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "io.github.makiiii_git.y2eknt"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play の対象APIレベル要件（2026年8月31日以降はAPI 36が必須）。
+    // Flutter 3.29.3 の既定は35のため明示的に上書きする。
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -36,7 +38,7 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // flutter_secure_storage（Android Keystore暗号化）の要件
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
