@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_settings.dart';
+import 'build_config.dart';
 import 'ex_credentials.dart';
 import 'premium.dart';
 import 'update_checker.dart';
@@ -345,28 +346,32 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('バージョン'),
             subtitle: Text(_currentVersion.isEmpty ? '-' : _currentVersion),
           ),
-          ListTile(
-            leading: _checking
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.system_update),
-            title: const Text('更新を確認'),
-            subtitle: const Text('GitHub Releases の最新バージョンを確認します'),
-            enabled: !_checking,
-            onTap: _checkUpdate,
-          ),
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: const Text('ソースコード'),
-            subtitle: const Text('github.com/${UpdateChecker.repo}'),
-            onTap: () => launchUrl(
-              Uri.parse('https://github.com/${UpdateChecker.repo}'),
-              mode: LaunchMode.externalApplication,
+          // Play版では更新はPlayストアが行うため、GitHubからのAPK更新と
+          // リポジトリへのリンクは表示しない（Playポリシー対応）
+          if (!kIsPlayStoreBuild) ...[
+            ListTile(
+              leading: _checking
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.system_update),
+              title: const Text('更新を確認'),
+              subtitle: const Text('GitHub Releases の最新バージョンを確認します'),
+              enabled: !_checking,
+              onTap: _checkUpdate,
             ),
-          ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('ソースコード'),
+              subtitle: const Text('github.com/${UpdateChecker.repo}'),
+              onTap: () => launchUrl(
+                Uri.parse('https://github.com/${UpdateChecker.repo}'),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
+          ],
         ],
       ),
     );

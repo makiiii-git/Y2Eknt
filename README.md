@@ -14,11 +14,23 @@ Yahoo!乗換案内の経路詳細画面で「共有」→ Y2Eknt を選ぶと、
 - **EX予約連携（Web版・任意）** — 設定で有効にすると、のぞみ・ひかり・こだま・みずほ・さくら・つばめを含む経路でEX予約（Web版）を開くボタンを表示し、ログイン後の検索フォームへ条件の自動入力を試みる（ログインはユーザー自身が実施。既定は無効。スマートEXはYahoo!乗換案内の公式連携もあります）
 - **自動で開くモード** — 設定で「自動で開く」を選ぶと、共有を受け取った直後に予約サービスへ移動。東海道・山陽・九州新幹線の経路はEX予約へ、それ以外はえきねっとへ自動で振り分け
 - **解析できなくても困らない** — 解析に失敗した場合は受信テキストの表示とコピーにフォールバック
-- **アプリ内アップデート** — 設定 → 更新を確認 で GitHub Releases の新バージョンを取得
+- **アプリ内アップデート** — 設定 → 更新を確認 で GitHub Releases の新バージョンを取得（GitHub版のみ）
 
 ## インストール
 
 [Releases](https://github.com/makiiii-git/Y2Eknt/releases) から最新の `Y2Eknt-vX.X.X.apk` をダウンロードしてインストールしてください。
+
+## ビルド
+
+```bash
+# GitHub Releases 配布用APK（更新チェック・ソースコードリンクあり）
+flutter build apk --release
+
+# Google Play 配布用AAB
+# Play外からのアプリ更新はPlayポリシーで禁止されているため、
+# PLAY_STORE フラグで更新チェックとリポジトリリンクを無効化する
+flutter build appbundle --release --dart-define=PLAY_STORE=true
+```
 
 ## 使い方
 
