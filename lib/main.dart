@@ -92,7 +92,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onText(String text) async {
-    debugPrint('SHARED_TEXT_BEGIN\n$text\nSHARED_TEXT_END');
     final result = RouteParser.parse(text);
     setState(() => _sharedText = text);
     if (result.isSuccess) {

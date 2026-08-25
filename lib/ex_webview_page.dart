@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -12,10 +11,6 @@ import 'route_parser.dart';
 /// EX予約の列車検索はログイン後にしか表示されない。ログインはユーザー自身が
 /// このWebView内で行う（認証情報はJR東海のページと直接やり取りされ、
 /// アプリは関与しない）。Cookieが保持されるため2回目以降はログイン不要。
-///
-/// 検索フォームのフィールド構造は非公開のため、ページごとに構造
-/// （フィールド名・IDのみ。入力値は収集しない）をデバッグログに出力し、
-/// 判明した構造に基づいて自動入力を実装する。
 class ExWebViewPage extends StatefulWidget {
   const ExWebViewPage({super.key, required this.routeInfo});
 
@@ -58,7 +53,6 @@ class _ExWebViewPageState extends State<ExWebViewPage> {
   }
 
   Future<void> _onPageFinished(String url) async {
-    await _dumpFormStructure(url);
     await _tryAutoLogin(url);
     await _tryOpenSearchMenu(url);
     await _tryAutofill(url);
@@ -127,43 +121,6 @@ class _ExWebViewPageState extends State<ExWebViewPage> {
       }
     } catch (_) {
       // メニュー以外のページでは無視
-    }
-  }
-
-  /// フォーム構造（フィールド名・ID・selectの選択肢）をログに出力する。
-  /// 自動入力の対応ページを増やすための開発用。ユーザーの入力値は収集しない。
-  /// logcatの行長制限を避けるため分割して出力する。
-  Future<void> _dumpFormStructure(String url) async {
-    if (!kDebugMode) return;
-    try {
-      final result = await _controller.runJavaScriptReturningResult('''
-JSON.stringify({
-  url: location.href,
-  title: document.title,
-  fields: Array.from(document.querySelectorAll('input, select'))
-    .filter(function(e) { return e.type !== 'hidden' || e.id; })
-    .slice(0, 40)
-    .map(function(e) {
-      var f = e.tagName + ':' + (e.type || '') + ':' + (e.name || '') + ':' + (e.id || '');
-      if (e.tagName === 'SELECT') {
-        var opts = Array.from(e.options).slice(0, 45).map(function(o) {
-          return o.value + '=' + o.text.trim().slice(0, 12);
-        });
-        f += ' OPTS[' + opts.join(',') + ']';
-      }
-      return f;
-    })
-})
-''');
-      final text = result.toString();
-      debugPrint('EX_FORM_DUMP_BEGIN');
-      for (var i = 0; i < text.length; i += 600) {
-        final end = (i + 600 < text.length) ? i + 600 : text.length;
-        debugPrint('EXD|${text.substring(i, end)}');
-      }
-      debugPrint('EX_FORM_DUMP_END');
-    } catch (_) {
-      // ダンプ失敗は無視（本機能に影響なし）
     }
   }
 
