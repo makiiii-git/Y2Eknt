@@ -20,10 +20,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ローカル開発環境（macOS 12制約）と同じバージョンに固定する
+      # ローカル開発環境と同じバージョンに固定する（macOS 12でも動作を実測確認済み）
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.3'
+          flutter-version: '3.38.10'
           channel: stable
           cache: true
 

@@ -252,32 +252,37 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text('共有受信時の動作'),
           ),
-          RadioListTile<bool>(
-            title: const Text('ボタンで選んで開く'),
-            subtitle: const Text('解析結果を確認してから予約サービスを開きます'),
-            value: false,
+          RadioGroup<bool>(
             groupValue: effectiveAutoOpen,
             onChanged: (v) => _setAutoOpen(v!),
-          ),
-          RadioListTile<bool>(
-            title: Row(
+            child: Column(
               children: [
-                const Text('自動で開く'),
-                if (!isPremium) ...[
-                  const SizedBox(width: 6),
-                  Icon(Icons.lock_outline,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ],
+                const RadioListTile<bool>(
+                  title: Text('ボタンで選んで開く'),
+                  subtitle: Text('解析結果を確認してから予約サービスを開きます'),
+                  value: false,
+                ),
+                RadioListTile<bool>(
+                  title: Row(
+                    children: [
+                      const Text('自動で開く'),
+                      if (!isPremium) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.lock_outline,
+                            size: 16,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
+                      ],
+                    ],
+                  ),
+                  subtitle: Text(
+                      '${isPremium ? '' : '【プレミアム限定】'}共有後すぐに予約サービスへ移動します。'
+                      '東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、'
+                      'それ以外はえきねっとへ自動で振り分けます'),
+                  value: true,
+                ),
               ],
             ),
-            subtitle: Text(
-                '${isPremium ? '' : '【プレミアム限定】'}共有後すぐに予約サービスへ移動します。'
-                '東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、'
-                'それ以外はえきねっとへ自動で振り分けます'),
-            value: true,
-            groupValue: effectiveAutoOpen,
-            onChanged: (v) => _setAutoOpen(v!),
           ),
           const Divider(),
           const Padding(
