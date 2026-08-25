@@ -21,8 +21,7 @@ Yahoo!乗換案内の経路詳細画面で「共有」→ Y2Eknt を選ぶと、
 
 [Releases](https://github.com/makiiii-git/Y2Eknt/releases) から最新の `Y2Eknt-vX.X.X.apk` をダウンロードしてインストールしてください。
 
-「アプリをインストールできません」と表示される場合は、お使いの端末が32bit（armeabi-v7a）です。
-同じリリースにある `Y2Eknt-vX.X.X-arm32.apk` をお使いください。
+64bit（arm64-v8a）端末向けです。現行のAndroid端末はすべて該当します。
 
 ### GitHub版とGoogle Play版の違い
 
@@ -38,8 +37,8 @@ GitHub版は Google Play の課金基盤を使えないため、**広告を表�
 
 ```bash
 # GitHub Releases 配布用APK（更新チェック・ソースコードリンクあり）
-# ABI分割でサイズを削減する。x86_64はエミュレータ専用のため作らない
-flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+# arm64のみに絞ってサイズを削減する（--split-per-abi はversionCodeに2000を加算するため必須）
+flutter build apk --release --split-per-abi --target-platform android-arm64
 
 # Google Play 配布用AAB
 # Play外からのアプリ更新はPlayポリシーで禁止されているため、

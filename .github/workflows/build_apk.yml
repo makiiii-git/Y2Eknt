@@ -54,20 +54,21 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      # ABIごとに分割してAPKを小さくする。x86_64はエミュレータ専用のため作らない。
-      - run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+      # arm64のみをビルドしてAPKを小さくする。他のABIは作らない:
+      # x86_64はエミュレータ専用、32bit ARMはPixel 9以降が非対応で、
+      # 複数ファイルを並べると利用者もアプリ内更新も取り違えるため。
+      # --split-per-abi はversionCodeに2000を加算する。これを外すと
+      # 既存リリース(2015)より小さい番号になり上書き更新できなくなる。
+      - run: flutter build apk --release --split-per-abi --target-platform android-arm64
 
-      # 通常端末向け（arm64）をバージョン名そのままのファイルにする。
-      # 例: Y2Eknt-v1.0.4.apk / Y2Eknt-v1.0.4-arm32.apk
-      - name: Rename APKs with version
+      # 例: Y2Eknt-v1.0.4.apk
+      - name: Rename APK with version
         id: apk
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
           DIR=build/app/outputs/flutter-apk
           mv "$DIR/app-arm64-v8a-release.apk" "$DIR/Y2Eknt-v${VERSION}.apk"
-          mv "$DIR/app-armeabi-v7a-release.apk" "$DIR/Y2Eknt-v${VERSION}-arm32.apk"
           echo "arm64=$DIR/Y2Eknt-v${VERSION}.apk" >> "$GITHUB_OUTPUT"
-          echo "arm32=$DIR/Y2Eknt-v${VERSION}-arm32.apk" >> "$GITHUB_OUTPUT"
 
       # 署名鍵が前回リリースと同じか確認できるよう指紋を残す。
       # ここが変わると既存ユーザーは上書き更新できない。
@@ -80,14 +81,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Y2Eknt-apk
-          path: |
-            ${{ steps.apk.outputs.arm64 }}
-            ${{ steps.apk.outputs.arm32 }}
+          path: ${{ steps.apk.outputs.arm64 }}
 
       - name: Upload to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/V')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ steps.apk.outputs.arm64 }}
-            ${{ steps.apk.outputs.arm32 }}
+          files: ${{ steps.apk.outputs.arm64 }}

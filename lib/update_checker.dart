@@ -42,19 +42,21 @@ class UpdateChecker {
     final tag = (json['tag_name'] as String? ?? '').trim();
     if (tag.isEmpty) return null;
 
-    String? apkUrl;
-    final assets = json['assets'] as List<dynamic>? ?? const [];
-    for (final a in assets) {
-      final url = (a as Map<String, dynamic>)['browser_download_url'] as String?;
-      if (url != null && url.endsWith('.apk')) {
-        apkUrl = url;
-        break;
-      }
-    }
+    // 標準APK（arm64）を選ぶ。ABI別のAPKが併存する場合、GitHubは
+    // ファイル名順に返すため単純な先頭一致だと32bit版を掴んでしまう。
+    final urls = (json['assets'] as List<dynamic>? ?? const [])
+        .map((a) => (a as Map<String, dynamic>)['browser_download_url'])
+        .whereType<String>()
+        .where((url) => url.endsWith('.apk'))
+        .toList();
+    final apkUrl = urls.firstWhere(
+      (url) => !RegExp(r'arm32|armeabi|x86').hasMatch(url),
+      orElse: () => urls.isEmpty ? '' : urls.first,
+    );
     return ReleaseInfo(
       version: stripTagPrefix(tag),
       pageUrl: json['html_url'] as String? ?? 'https://github.com/$repo/releases',
-      apkUrl: apkUrl,
+      apkUrl: apkUrl.isEmpty ? null : apkUrl,
     );
   }
 
