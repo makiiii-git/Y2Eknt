@@ -220,6 +220,15 @@ void main() {
       expect(RouteParser.normalizeStation('大宮(埼玉)'), '大宮');
     });
 
+    // Yahoo!乗換案内の実際の表記は半角括弧＋「県」付き（実機で確認）
+    test('都/道/府/県が付く表記も取り除く', () {
+      expect(RouteParser.normalizeStation('大宮(埼玉県)'), '大宮');
+      expect(RouteParser.normalizeStation('大宮（埼玉県）'), '大宮');
+      expect(RouteParser.normalizeStation('府中(東京都)'), '府中');
+      expect(RouteParser.normalizeStation('山田(京都府)'), '山田');
+      expect(RouteParser.normalizeStation('大川(北海道)'), '大川');
+    });
+
     test('都道府県以外の括弧は残す', () {
       expect(RouteParser.normalizeStation('新宿（西口）'), '新宿（西口）');
       expect(RouteParser.normalizeStation('駅前（バス）'), '駅前（バス）');
@@ -238,14 +247,14 @@ void main() {
   });
 
   group('RouteParser 都道府県つき駅名の経路', () {
-    const sample = '大宮（埼玉）⇒金沢\n'
+    const sample = '大宮(埼玉県)⇒金沢\n'
         '2026年10月03日\n'
         '08:30 ⇒ 10:32\n'
         '------------------------------\n'
         '乗換　0回\n'
         '------------------------------\n'
         '\n'
-        '■大宮（埼玉）\n'
+        '■大宮(埼玉県)\n'
         '↓ 08:30～10:32\n'
         '↓ ＪＲ新幹線かがやき505号  金沢行\n'
         '■金沢\n';
