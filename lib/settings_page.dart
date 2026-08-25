@@ -42,9 +42,12 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) setState(() => _hasExCredentials = v);
     });
     PremiumManager.instance.isPremium.addListener(_onPremiumChanged);
-    PremiumManager.instance.fetchProduct().then((product) {
-      if (mounted) setState(() => _premiumProduct = product);
-    });
+    // GitHub版はストアに接続できないため価格の取得もしない
+    if (kIsPlayStoreBuild) {
+      PremiumManager.instance.fetchProduct().then((product) {
+        if (mounted) setState(() => _premiumProduct = product);
+      });
+    }
   }
 
   @override
@@ -284,39 +287,42 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Text('プレミアム'),
-          ),
-          if (isPremium)
-            ListTile(
-              leading: Icon(Icons.verified,
-                  color: Theme.of(context).colorScheme.primary),
-              title: const Text('プレミアム購入済み'),
-              subtitle: const Text('広告非表示・履歴の無制限表示・自動で開く・EX予約連携が有効です'),
-            )
-          else ...[
-            ListTile(
-              leading: _purchasing
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.workspace_premium),
-              title: const Text('プレミアムにアップグレード'),
-              subtitle: Text('広告の非表示、履歴の無制限表示、自動で開く、EX予約連携が使えます'
-                  '${_premiumProduct != null ? '（${_premiumProduct!.price}）' : ''}'),
-              enabled: !_purchasing,
-              onTap: _buyPremium,
+          // GitHub版は課金できないため全機能が最初から有効。購入UIは出さない
+          if (kIsPlayStoreBuild) ...[
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Text('プレミアム'),
             ),
-            ListTile(
-              leading: const Icon(Icons.restore),
-              title: const Text('購入を復元'),
-              subtitle: const Text('機種変更などで購入済みの場合はこちら'),
-              onTap: _restorePremium,
-            ),
+            if (isPremium)
+              ListTile(
+                leading: Icon(Icons.verified,
+                    color: Theme.of(context).colorScheme.primary),
+                title: const Text('プレミアム購入済み'),
+                subtitle: const Text('広告非表示・履歴の無制限表示・自動で開く・EX予約連携が有効です'),
+              )
+            else ...[
+              ListTile(
+                leading: _purchasing
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.workspace_premium),
+                title: const Text('プレミアムにアップグレード'),
+                subtitle: Text('広告の非表示、履歴の無制限表示、自動で開く、EX予約連携が使えます'
+                    '${_premiumProduct != null ? '（${_premiumProduct!.price}）' : ''}'),
+                enabled: !_purchasing,
+                onTap: _buyPremium,
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore),
+                title: const Text('購入を復元'),
+                subtitle: const Text('機種変更などで購入済みの場合はこちら'),
+                onTap: _restorePremium,
+              ),
+            ],
           ],
           const Divider(),
           SwitchListTile(

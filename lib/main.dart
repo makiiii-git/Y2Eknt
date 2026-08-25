@@ -5,6 +5,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'ad_banner.dart';
 import 'app_settings.dart';
+import 'build_config.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
 import 'history_detail_page.dart';
@@ -23,7 +24,10 @@ void main() {
   }
   // 購入状態の復元と広告SDKの初期化は起動をブロックせずに進める
   PremiumManager.instance.init();
-  MobileAds.instance.initialize();
+  // 広告はPlay版のみ（AdMobは承認済みストア経由の配布が前提）
+  if (kIsPlayStoreBuild) {
+    MobileAds.instance.initialize();
+  }
   runApp(const Y2EkntApp());
 }
 

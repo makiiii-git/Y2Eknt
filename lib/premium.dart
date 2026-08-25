@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'build_config.dart';
+
 /// プレミアム（買い切りアプリ内課金）の購入状態を管理する。
 ///
 /// 購入状態の正はGoogle Play Billingで、SharedPreferencesのキャッシュは
@@ -30,6 +32,12 @@ class PremiumManager {
   /// アプリ起動時に一度だけ呼ぶ。ストアへ接続できない環境（テスト・
   /// サイドロード版）でも例外を出さずキャッシュ値で動作する。
   Future<void> init() async {
+    // GitHub版は Play Billing が使えず購入できないため、
+    // プレミアム機能を最初から解放する（広告も表示しない）
+    if (!kIsPlayStoreBuild) {
+      isPremium.value = true;
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       isPremium.value = prefs.getBool(_cacheKey) ?? false;
