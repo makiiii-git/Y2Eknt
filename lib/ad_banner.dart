@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-/// バナー広告ユニットID。
+/// バナー広告ユニットID（AdMob本番）。
 ///
-/// TODO: リリース前にAdMobで発行した本番IDへ差し替えること。
-/// 現在はGoogle公式のテスト用IDのため収益は発生しない。
-/// AndroidManifest.xmlのcom.google.android.gms.ads.APPLICATION_IDも
-/// あわせて本番のAdMobアプリIDへ差し替える。
-const bannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+/// AndroidManifest.xmlのcom.google.android.gms.ads.APPLICATION_IDに
+/// 対応するAdMobアプリIDを設定しており、両者は同じAdMobアプリに属する。
+const bannerAdUnitId = 'ca-app-pub-5796626901181447/8168135134';
 
 /// ホーム画面下部に表示するアンカー型アダプティブバナー。
 /// 読み込みに失敗した場合や広告SDKが使えない環境では何も表示しない。
