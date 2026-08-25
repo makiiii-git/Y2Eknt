@@ -208,30 +208,27 @@ void main() {
     });
   });
 
-  group('RouteParser.normalizeStation 都道府県の接尾辞', () {
-    test('全角括弧の都道府県を取り除く', () {
+  group('RouteParser.normalizeStation 末尾の括弧書き', () {
+    test('同名駅を区別する都道府県を取り除く', () {
       expect(RouteParser.normalizeStation('大宮（埼玉）'), '大宮');
-      expect(RouteParser.normalizeStation('府中（東京）'), '府中');
-      expect(RouteParser.normalizeStation('白山（石川）'), '白山');
-      expect(RouteParser.normalizeStation('大山（神奈川）'), '大山');
-    });
-
-    test('半角括弧でも取り除く', () {
       expect(RouteParser.normalizeStation('大宮(埼玉)'), '大宮');
-    });
-
-    // Yahoo!乗換案内の実際の表記は半角括弧＋「県」付き（実機で確認）
-    test('都/道/府/県が付く表記も取り除く', () {
+      // Yahoo!乗換案内の実際の表記は半角括弧＋「県」付き（実機で確認）
       expect(RouteParser.normalizeStation('大宮(埼玉県)'), '大宮');
-      expect(RouteParser.normalizeStation('大宮（埼玉県）'), '大宮');
       expect(RouteParser.normalizeStation('府中(東京都)'), '府中');
-      expect(RouteParser.normalizeStation('山田(京都府)'), '山田');
       expect(RouteParser.normalizeStation('大川(北海道)'), '大川');
     });
 
-    test('都道府県以外の括弧は残す', () {
-      expect(RouteParser.normalizeStation('新宿（西口）'), '新宿（西口）');
-      expect(RouteParser.normalizeStation('駅前（バス）'), '駅前（バス）');
+    test('経路種別や路線・運航会社の補足も取り除く', () {
+      expect(RouteParser.normalizeStation('羽田空港(空路)'), '羽田空港');
+      expect(RouteParser.normalizeStation('羽田空港第１ターミナル（モノレール/JAL）'),
+          '羽田空港第１ターミナル');
+      expect(RouteParser.normalizeStation('東京(バス)'), '東京');
+      expect(RouteParser.normalizeStation('新宿（西口）'), '新宿');
+    });
+
+    test('括弧書きが複数続く場合もすべて取り除く', () {
+      expect(RouteParser.normalizeStation('羽田空港第２ターミナル（モノレール）（東京都）'),
+          '羽田空港第２ターミナル');
     });
 
     test('括弧が無い駅名はそのまま', () {
@@ -239,10 +236,12 @@ void main() {
       expect(RouteParser.normalizeStation('新大阪'), '新大阪');
     });
 
-    test('北海道・和歌山・鹿児島など長い県名も取り除く', () {
-      expect(RouteParser.normalizeStation('大川（北海道）'), '大川');
-      expect(RouteParser.normalizeStation('北山（和歌山）'), '北山');
-      expect(RouteParser.normalizeStation('中央（鹿児島）'), '中央');
+    test('括弧を外すと空になる場合は元の表記を残す', () {
+      expect(RouteParser.normalizeStation('（不明）'), '（不明）');
+    });
+
+    test('前後の空白を取り除く', () {
+      expect(RouteParser.normalizeStation('大宮 (埼玉県) '), '大宮');
     });
   });
 

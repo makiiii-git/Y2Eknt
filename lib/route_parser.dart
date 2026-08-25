@@ -152,27 +152,25 @@ class RouteParser {
   /// 「■東京」の駅行。
   static final _stationRe = RegExp(r'^■(.+)$');
 
-  /// 同名駅を区別するためYahoo!乗換案内が付ける都道府県の接尾辞。
-  /// 例: 「大宮（埼玉）」「府中（東京）」。えきねっとの駅名入力では
-  /// この接尾辞があると駅を特定できないため取り除く。
+  /// 駅名の末尾にYahoo!乗換案内が付ける補足表記。
+  /// 例: 「大宮(埼玉県)」（同名駅の区別）、「羽田空港(空路)」（経路種別）、
+  /// 「羽田空港第１ターミナル（モノレール/JAL）」（路線・運航会社）。
   ///
-  /// 「埼玉」「埼玉県」のように 都/道/府/県 の有無どちらの表記も許容する。
-  /// 括弧内が47都道府県名のときだけ除去し、駅名そのものに含まれる
-  /// 括弧（「新宿（西口）」のようなバス停表記など）は残す。
-  static final _prefectureSuffixRe = RegExp(
-    r'[（(](?:'
-    '北海道|青森|岩手|宮城|秋田|山形|福島|'
-    '茨城|栃木|群馬|埼玉|千葉|東京|神奈川|'
-    '新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|'
-    '滋賀|京都|大阪|兵庫|奈良|和歌山|'
-    '鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|'
-    '福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄'
-    r')[都道府県]?[）)]\s*$',
-  );
+  /// えきねっとの駅名入力ではこれらが付いたままだと駅を特定できないため、
+  /// 括弧の中身によらず末尾の括弧書きを取り除く。全角・半角の両方に対応。
+  static final _parenSuffixRe = RegExp(r'[（(][^（(）)]*[）)]\s*$');
 
-  /// 駅名から都道府県の接尾辞を取り除く。
-  static String normalizeStation(String name) =>
-      name.replaceFirst(_prefectureSuffixRe, '').trim();
+  /// 駅名から末尾の括弧書きを取り除く。
+  /// 「A（B）（C）」のように複数続く場合もすべて取り除く。
+  static String normalizeStation(String name) {
+    var s = name.trim();
+    while (true) {
+      final stripped = s.replaceFirst(_parenSuffixRe, '').trim();
+      // 括弧を外すと空になる場合は元の表記を残す（駅名が失われるのを防ぐ）
+      if (stripped.isEmpty || stripped == s) return s;
+      s = stripped;
+    }
+  }
 
   /// フッター以降（URL・注記）を打ち切る行。
   static final _footerRe = RegExp(r'^(?:---$|★|\(運賃内訳\)|https?://)');
