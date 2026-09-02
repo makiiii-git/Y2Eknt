@@ -60,6 +60,10 @@ flutter build appbundle --release --dart-define=PLAY_STORE=true
 - 通信が発生するのは次の場合だけです: えきねっと／EX予約のページ表示、設定画面での更新確認（GitHub API）
 - 共有された経路テキストは端末内でのみ解析し、外部へ送信しません
 
+## 開発者向け
+
+開発・配布・運用の引き継ぎ情報は [HANDOVER.md](HANDOVER.md) にまとめています。
+
 ## ライセンス
 
 [Apache License 2.0](LICENSE)
