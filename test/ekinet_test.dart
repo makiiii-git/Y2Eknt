@@ -80,4 +80,31 @@ void main() {
       expect(script, isNot(contains('新宿')));
     });
   });
+
+  group('Ekinet.isSearchPage', () {
+    test('検索条件入力ページのURLを判定する', () {
+      expect(Ekinet.isSearchPage(Ekinet.searchPageUrl), isTrue);
+      expect(
+          Ekinet.isSearchPage(
+              'https://www.eki-net.com/Personal/reserve/wb/RouteSearchConditionInput/SearchTrain'),
+          isTrue);
+      expect(Ekinet.isSearchPage('https://www.eki-net.com/Personal/Login'),
+          isFalse);
+    });
+  });
+
+  group('Ekinet.formReadyScript', () {
+    test('自動入力で使う全フィールドの存在を確認する', () {
+      for (final id in ['form_station_geton', 'form_station_getoff']) {
+        expect(Ekinet.formReadyScript, contains("getElementById('$id')"));
+      }
+      for (final name in [
+        'form_date_oneway_date',
+        'form_date_oneway_hour',
+        'form_date_oneway_minute',
+      ]) {
+        expect(Ekinet.formReadyScript, contains("getElementsByName('$name')"));
+      }
+    });
+  });
 }

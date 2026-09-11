@@ -6,10 +6,29 @@ import 'route_parser.dart';
 /// （2026-08 実サイト調査済み。検索フォームは POST + CSRF トークン方式）、
 /// アプリ内 WebView で検索ページを開き、JavaScript でフォームへ入力する。
 /// フィールド名は 2026-08-22 に実サイトで確認したもの。
+///
+/// 2026-09 以降、えきねっとは計測タグ（WalkMe・各種広告ピクセル）を多数読み込む
+/// ようになり、load 完了まで 10 秒以上かかる一方、検索フォーム自体は静的 HTML で
+/// DOM 構築直後（1〜2 秒）に存在する。ページ側の onload 処理はフォーム値を
+/// 書き換えないため、load を待たずフォームの出現を検知して自動入力する。
 class Ekinet {
   /// 新幹線・特急の検索条件入力ページ。
   static const String searchPageUrl =
       'https://www.eki-net.com/Personal/reserve/wb/RouteSearchConditionInput/Index';
+
+  /// 検索条件入力ページかどうか（URL で判定）。
+  static bool isSearchPage(String url) =>
+      url.contains('RouteSearchConditionInput');
+
+  /// 自動入力対象のフォーム要素がすべて存在するかを返す JavaScript 式。
+  /// `runJavaScriptReturningResult` の結果が `true` なら入力可能。
+  static const String formReadyScript = '(function() {'
+      " return !!(document.getElementById('form_station_geton')"
+      " && document.getElementById('form_station_getoff')"
+      " && document.getElementsByName('form_date_oneway_date').length"
+      " && document.getElementsByName('form_date_oneway_hour').length"
+      " && document.getElementsByName('form_date_oneway_minute').length);"
+      '})()';
 
   /// JS文字列リテラル用のエスケープ。
   static String _js(String s) => s
