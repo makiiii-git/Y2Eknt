@@ -12,5 +12,5 @@
 /// - ソースコードリポジトリへのリンク
 ///
 /// GitHub版は Play Billing が使えず課金できないため、
-/// プレミアム機能（履歴無制限・自動で開く・EX予約連携）は最初から解放する。
+/// プレミアム機能（履歴の制限解除・自動で開く・EX予約連携）は最初から解放する。
 const bool kIsPlayStoreBuild = bool.fromEnvironment('PLAY_STORE');

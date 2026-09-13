@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,7 +22,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _exEnabled = false;
   bool _autoOpen = false;
   bool _hasExCredentials = false;
-  ProductDetails? _premiumProduct;
   bool _purchasing = false;
 
   @override
@@ -42,12 +40,6 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) setState(() => _hasExCredentials = v);
     });
     PremiumManager.instance.isPremium.addListener(_onPremiumChanged);
-    // GitHub版はストアに接続できないため価格の取得もしない
-    if (kIsPlayStoreBuild) {
-      PremiumManager.instance.fetchProduct().then((product) {
-        if (mounted) setState(() => _premiumProduct = product);
-      });
-    }
   }
 
   @override
@@ -90,8 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context) => AlertDialog(
         title: const Text('プレミアム機能'),
         content: Text('「$featureName」はプレミアム限定の機能です。\n'
-            'プレミアムでは広告の非表示と履歴の無制限表示も有効になります。'
-            '${_premiumProduct != null ? '\n\n価格: ${_premiumProduct!.price}' : ''}'),
+            'プレミアムでは広告の非表示と履歴の制限解除（表示件数拡大）も有効になります。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -299,7 +290,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 leading: Icon(Icons.verified,
                     color: Theme.of(context).colorScheme.primary),
                 title: const Text('プレミアム購入済み'),
-                subtitle: const Text('広告非表示・履歴の無制限表示・自動で開く・EX予約連携が有効です'),
+                subtitle: const Text('広告非表示・履歴の制限解除（表示件数拡大）・自動で開く・EX予約連携が有効です'),
               )
             else ...[
               ListTile(
@@ -311,8 +302,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       )
                     : const Icon(Icons.workspace_premium),
                 title: const Text('プレミアムにアップグレード'),
-                subtitle: Text('広告の非表示、履歴の無制限表示、自動で開く、EX予約連携が使えます'
-                    '${_premiumProduct != null ? '（${_premiumProduct!.price}）' : ''}'),
+                subtitle: const Text('広告の非表示、履歴の制限解除（表示件数拡大）、自動で開く、EX予約連携が使えます'),
                 enabled: !_purchasing,
                 onTap: _buyPremium,
               ),
