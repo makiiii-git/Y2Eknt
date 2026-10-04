@@ -24,14 +24,17 @@ class _AdBannerState extends State<AdBanner> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_loadStarted) {
+    // 起動直後は画面サイズが確定しておらず幅0になることがある。
+    // 幅0で要求すると「Ad request doesn't meet size requirements」で必ず失敗するため、
+    // 幅が確定して再度呼ばれるまで読み込みを始めない（sizeOfで画面サイズの変化を購読している）。
+    final width = MediaQuery.sizeOf(context).width.truncate();
+    if (!_loadStarted && width > 0) {
       _loadStarted = true;
-      _load();
+      _load(width);
     }
   }
 
-  Future<void> _load() async {
-    final width = MediaQuery.of(context).size.width.truncate();
+  Future<void> _load(int width) async {
     try {
       final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
           width);
