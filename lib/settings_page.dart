@@ -1,3 +1,4 @@
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import 'app_settings.dart';
 import 'build_config.dart';
 import 'ex_credentials.dart';
 import 'premium.dart';
+import 'review_prompt.dart';
 import 'update_checker.dart';
 
 /// 設定画面。バージョン表示とアプリの更新チェックを行う。
@@ -231,6 +233,25 @@ class _SettingsPageState extends State<SettingsPage> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Google Play のストアページへのリンクを共有シートで送る。
+  Future<void> _shareApp() async {
+    const intent = AndroidIntent(
+      action: 'android.intent.action.SEND',
+      type: 'text/plain',
+      arguments: {
+        'android.intent.extra.SUBJECT': 'Y2Eknt - 新幹線・特急の予約検索を自動入力',
+        'android.intent.extra.TEXT':
+            '乗換アプリで調べた経路を共有するだけで、新幹線・特急の予約サイトの検索条件を自動入力してくれるアプリ「Y2Eknt」\n'
+            '${ReviewPrompt.storeUrl}',
+      },
+    );
+    try {
+      await intent.launchChooser('友だちに教える');
+    } catch (e) {
+      if (mounted) _showMessage('共有できませんでした: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPremium = PremiumManager.instance.isPremium.value;
@@ -347,6 +368,21 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('バージョン'),
             subtitle: Text(_currentVersion.isEmpty ? '-' : _currentVersion),
           ),
+          // ストアの評価と紹介はPlay版のみ（GitHub版にはストアページが無い）
+          if (kIsPlayStoreBuild) ...[
+            ListTile(
+              leading: const Icon(Icons.star_outline),
+              title: const Text('アプリを評価する'),
+              subtitle: const Text('Google Play でレビューを書く。開発の励みになります'),
+              onTap: ReviewPrompt.openStoreListing,
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('友だちに教える'),
+              subtitle: const Text('アプリのリンクを共有します'),
+              onTap: _shareApp,
+            ),
+          ],
           // Play版では更新はPlayストアが行うため、GitHubからのAPK更新と
           // リポジトリへのリンクは表示しない（Playポリシー対応）
           if (!kIsPlayStoreBuild) ...[

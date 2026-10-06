@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
+import 'review_prompt.dart';
 import 'route_parser.dart';
 
 /// 経路テキストの解析結果と予約サービスへのボタンを表示するビュー。
@@ -77,10 +78,12 @@ class RouteResultView extends StatelessWidget {
       label: 'えきねっとで検索（条件を自動入力）',
       primary: !exEnabled || !info.usesTokaidoSanyoKyushu,
       color: const Color(0xFF00A044), // えきねっとグリーン
-      onPressed: () {
-        Navigator.of(context).push(MaterialPageRoute(
+      onPressed: () async {
+        await Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => EkinetWebViewPage(routeInfo: info),
         ));
+        // 予約サービスを使えた直後がレビューを頼むのに最も自然なタイミング
+        await ReviewPrompt.onReservationServiceClosed();
       },
     );
     final exButton = _ServiceButton(
@@ -88,10 +91,11 @@ class RouteResultView extends StatelessWidget {
       label: 'EX予約 Web版で検索（東海道・山陽新幹線）',
       primary: info.usesTokaidoSanyoKyushu,
       color: const Color(0xFF0053A6), // EX予約ブルー
-      onPressed: () {
-        Navigator.of(context).push(MaterialPageRoute(
+      onPressed: () async {
+        await Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => ExWebViewPage(routeInfo: info),
         ));
+        await ReviewPrompt.onReservationServiceClosed();
       },
     );
     if (!exEnabled) return [ekinetButton];

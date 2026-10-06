@@ -10,6 +10,7 @@ import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
 import 'history_detail_page.dart';
 import 'premium.dart';
+import 'review_prompt.dart';
 import 'route_history.dart';
 import 'route_parser.dart';
 import 'route_result_view.dart';
@@ -38,6 +39,8 @@ class Y2EkntApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Y2Eknt',
+      // デバッグ実機でのスクリーンショット撮影用にDEBUG帯を出さない
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         // えきねっとのブランドカラーに合わせたグリーン
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00A044)),
@@ -116,16 +119,18 @@ class _HomePageState extends State<HomePage> {
   /// 自動モード: 共有受信後すぐに予約サービスへ遷移する。
   /// 東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、
   /// それ以外はえきねっとへ自動で振り分ける。
-  void _autoOpen(RouteInfo info, bool useEx) {
+  Future<void> _autoOpen(RouteInfo info, bool useEx) async {
     if (!mounted) return;
     final nav = Navigator.of(context);
     // 連続共有でWebViewが積み重ならないようホームまで戻してから開く
     nav.popUntil((route) => route.isFirst);
-    nav.push(MaterialPageRoute(
+    await nav.push(MaterialPageRoute(
       builder: (_) => useEx
           ? ExWebViewPage(routeInfo: info)
           : EkinetWebViewPage(routeInfo: info),
     ));
+    // 予約サービスから戻ってきたらレビュー依頼の条件を判定する
+    await ReviewPrompt.onReservationServiceClosed();
   }
 
   Future<void> _openHistoryDetail(HistoryEntry entry) async {

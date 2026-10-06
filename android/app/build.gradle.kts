@@ -55,6 +55,11 @@ android {
     }
 
     buildTypes {
+        // デバッグ版はアプリIDを変えて、Play版がインストール済みの端末にも
+        // アンインストールせずに並行インストールできるようにする
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
