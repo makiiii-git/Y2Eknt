@@ -179,9 +179,14 @@ class _RouteResultViewState extends State<RouteResultView> {
         const SizedBox(height: 8),
         if (info != null && info.year != null) ...[
           // 別の列車で申し込んだ／申込を中止した経路は共有時刻での登録が誤りになるため無効化
+          // よく使うボタンなので高さと文字を大きくして押しやすくする
           OutlinedButton.icon(
-            icon: const Icon(Icons.event),
+            icon: const Icon(Icons.event, size: 26),
             label: const Text('カレンダーに登録'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+              textStyle: Theme.of(context).textTheme.titleMedium,
+            ),
             onPressed: _calendarDisabled ? null : () => _addToCalendar(info),
           ),
           if (_calendarDisabled)
@@ -238,16 +243,23 @@ class _ServiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 優先ボタンは濃色地に白文字、非優先は淡色地にブランド色文字
+    // 優先ボタンは濃色地に白文字、非優先は淡色地にブランド色文字。
+    // 優先ボタンはよく使うので高さと文字を大きくして押しやすくする
     final style = primary
         ? FilledButton.styleFrom(
-            backgroundColor: color, foregroundColor: Colors.white)
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(60),
+            textStyle: Theme.of(context).textTheme.titleMedium,
+          )
         : FilledButton.styleFrom(
             backgroundColor: color.withValues(alpha: 0.12),
-            foregroundColor: color);
+            foregroundColor: color,
+            minimumSize: const Size.fromHeight(48),
+          );
     return FilledButton.icon(
-      icon: Icon(icon),
-      label: Text(label),
+      icon: Icon(icon, size: primary ? 28 : 24),
+      label: Text(label, textAlign: TextAlign.center),
       style: style,
       onPressed: onPressed,
     );
