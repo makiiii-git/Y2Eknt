@@ -243,8 +243,9 @@ class _HomeBody extends StatelessWidget {
           child: const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Yahoo!乗換案内の経路詳細画面から「共有」→「他のアプリに共有」→ '
-              'Y2Eknt でテキストを送ると、予約サービスの検索へつなぎます',
+              'Yahoo!乗換案内の経路詳細画面から「LINE・メールで送る」→'
+              '「他のアプリに共有」→ Y2Eknt でテキストを送ると、'
+              '予約サービスの検索へつなぎます',
             ),
           ),
         ),
