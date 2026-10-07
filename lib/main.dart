@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
@@ -43,6 +44,16 @@ class Y2EkntApp extends StatelessWidget {
       title: 'Y2Eknt',
       // デバッグ実機でのスクリーンショット撮影用にDEBUG帯を出さない
       debugShowCheckedModeBanner: false,
+      // 日本語専用アプリなのでロケールを日本語に固定する。
+      // 既定（英語）のままだと漢字が中国語の字形で描画され、
+      // Material標準の文言（戻る・閉じる等）も英語になる
+      locale: const Locale('ja', 'JP'),
+      supportedLocales: const [Locale('ja', 'JP')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         // えきねっとのブランドカラーに合わせたグリーン
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00A044)),

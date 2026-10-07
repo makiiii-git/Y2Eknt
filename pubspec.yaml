@@ -32,6 +32,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 日本語ロケールの固定とMaterial標準文言（戻る・閉じる等）の日本語化。
+  # これが無いと英語ロケール扱いになり、漢字が中国語（簡体字）の字形で描画される
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
