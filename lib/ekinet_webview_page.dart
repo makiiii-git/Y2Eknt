@@ -115,7 +115,12 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
       document.querySelectorAll('h1, h2, h3, [class*="title"], [class*="Title"]'))
     .map(function(e) { return e.tagName + '.' + e.className + '|' + txt(e).slice(0, 60); })
     .filter(function(t) { return t.split('|')[1]; }).slice(0, 25);
-  var body = txt(document.body);
+  // 決済欄（カード情報）は出力対象から外す
+  var clone = document.body.cloneNode(true);
+  Array.prototype.forEach.call(
+      clone.querySelectorAll('[class*="Paysel"], [class*="Payment"], input, select'),
+      function(e) { e.parentNode.removeChild(e); });
+  var body = txt(clone);
   var times = [];
   var re = /\d{1,2}(?::|時)\d{2}/g, m;
   while ((m = re.exec(body)) && times.length < 20) {

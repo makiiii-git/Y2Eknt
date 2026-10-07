@@ -149,7 +149,7 @@ class _RouteResultViewState extends State<RouteResultView> {
         : [ekinetButton, const SizedBox(height: 8), exButton];
   }
 
-  /// 共有した時刻での登録が誤りになる状態か。
+  /// 共有した時刻での登録が誤りになる状態か（cancelled は旧データ互換）。
   bool get _calendarDisabled =>
       _status == ReservationStatus.reservedOtherTrain ||
       _status == ReservationStatus.cancelled;

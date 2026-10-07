@@ -8,10 +8,13 @@ import 'route_parser.dart';
 /// 2026-10-07 に実サイトで確認した構造:
 /// - ページタイトルは「申込内容の確認｜JRきっぷ：えきねっと（JR東日本）」のように
 ///   「ページ名｜…」の形式。ページ見出しは `h2.pageHeadline`。
-/// - 申込内容の確認ページでは乗車駅・時刻が `.qrShare_titleReslutStNameGeton`
-///   （例「東京 18時20分 発」）、降車駅が `.qrShare_titleReslutStNameGetoff`、
-///   日付を含む要約が `.qrShare_titleReslut`（例「2026年10月8日（木） 東京 18時20分 …」）。
-/// - 列車名は「はやぶさ３７号」のように全角数字で表示される。
+/// - 申込内容の確認ページには「検索した経路の要約」（`.qrShare_formTrain` 内、
+///   例「2026年10月8日（木） 東京 18時20分 仙台 19時51分 …」）と、実際に申し込む
+///   「列車ごとの乗降」（`.selService_formTrain` 内の `.qrShare_titleReslutStNameGeton`、
+///   例「東京 18時20分 発」）がある。列車を変更した場合に正しいのは後者なので、
+///   読み取りは後者を優先する。
+/// - 列車名は `.icSeat_formTrainListNameW`（例「はやぶさ３７号東北・北海道新幹線」）。
+///   全角数字で表示される。
 class EkinetPageSnapshot {
   const EkinetPageSnapshot({
     this.title = '',
@@ -108,6 +111,7 @@ class ReservationOutcome {
     this.reservedTrain,
     this.reservedDepartureTime,
     this.itineraryVerified = false,
+    this.completionDetected = false,
   });
 
   final ReservationStatus status;
@@ -115,10 +119,14 @@ class ReservationOutcome {
   final String? reservedDepartureTime;
 
   /// 申込内容（列車の時刻）を読み取って共有経路と照合できたか。
-  /// false のときは完了は検知したが列車の一致は確認できていない。
+  /// false のときは確認画面には達したが列車の一致は確認できていない。
   final bool itineraryVerified;
 
-  /// ユーザーに結果を見せて記録すべきか。検索もせずに閉じた場合は false。
+  /// 申込の完了ページまで検知できたか。false のときは「申込内容の確認」まで
+  /// 進んだことだけを根拠に、確定したものとみなしている。
+  final bool completionDetected;
+
+  /// ユーザーに結果を見せて記録すべきか。確認画面に達していなければ false。
   bool get shouldRecord => status != ReservationStatus.unknown;
 }
 
@@ -131,10 +139,16 @@ class ReservationOutcome {
 /// → SelectSeat（座席の指定）→ ApplicationContentConfirmation（申込内容の確認）
 /// → 「この内容で確定」→ 申込の完了ページ
 /// ```
+/// 判定点は「申込内容の確認」ページ。この先は「この内容で確定」を押すだけ
+/// （クレジットカード決済）なので、確認ページに達したら申し込んだものとみなし、
+/// そこに表示された列車の発時刻・日付を共有経路の JR 区間と照合して
+/// 「共有どおり」か「別の列車」かを決める。確認ページに達せずに閉じた場合は
+/// 判定しない（検索や空席確認だけの利用を「中止」として記録しないため）。
+///
 /// 完了ページは実予約が必要なため URL 未確認。確認ページを通過したあとに
 /// 見出しが「完了」を含むページ（または URL に Complet を含むページ）へ
-/// 遷移したら完了とみなす。申し込んだ列車の時刻は確認ページから読み取り、
-/// 共有経路の JR 区間の発時刻と照合して「共有どおり」か「別の列車」かを決める。
+/// 遷移したら完了を検知したものとして [ReservationOutcome.completionDetected]
+/// に反映する（判定自体は変わらず、ポップアップの文言に使う）。
 class EkinetReservationTracker {
   EkinetReservationTracker(this.routeInfo);
 
@@ -181,17 +195,17 @@ class EkinetReservationTracker {
 
   /// 現在までの遷移から申込結果を判定する。
   ReservationOutcome outcome() {
-    if (!_searched) {
+    if (!_confirmed) {
       return const ReservationOutcome(status: ReservationStatus.unknown);
-    }
-    if (!_completed) {
-      return const ReservationOutcome(status: ReservationStatus.cancelled);
     }
     final it = _itinerary;
     final dep = it?.departureTime;
     if (it == null || dep == null) {
-      return const ReservationOutcome(
-          status: ReservationStatus.reserved, itineraryVerified: false);
+      return ReservationOutcome(
+        status: ReservationStatus.reserved,
+        itineraryVerified: false,
+        completionDetected: _completed,
+      );
     }
     final same = _sameTime(dep, routeInfo.jrSegment.departureTime) &&
         _sameDate(it.date, routeInfo);
@@ -202,6 +216,7 @@ class EkinetReservationTracker {
       reservedTrain: it.trainName,
       reservedDepartureTime: dep,
       itineraryVerified: true,
+      completionDetected: _completed,
     );
   }
 

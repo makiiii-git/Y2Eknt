@@ -57,8 +57,8 @@ class ReservationStatusBanner extends StatelessWidget {
 /// えきねっとの WebView を閉じたあとに自動判定の結果をポップアップで見せ、
 /// 必要なら選び直してもらってから履歴に記録する。
 ///
-/// 検索もせずに閉じた場合（[ReservationOutcome.shouldRecord] が false）は
-/// 何も表示せず記録もしない。
+/// 「申込内容の確認」に達していない場合（[ReservationOutcome.shouldRecord] が
+/// false）は、検索や空席確認だけの利用なので何も表示せず記録もしない。
 Future<void> showReservationResultDialog(
   BuildContext context, {
   required String text,
@@ -101,16 +101,21 @@ class _ReservationResultDialogState extends State<_ReservationResultDialog> {
       if (o.reservedDepartureTime != null) '${o.reservedDepartureTime}発',
     ].join(' ');
     final trainNote = train.isEmpty ? '' : '（$train）';
+    // 完了ページまで検知できていなければ「確認画面まで進んだ＝確定した」前提
+    final basis = o.completionDetected
+        ? '申込が完了しました。'
+        : '申込内容の確認まで進みました（確定したものとして記録します。'
+            '確定していなければ「記録しない」を押してください）。';
     switch (o.status) {
       case ReservationStatus.reserved:
         if (!o.itineraryVerified) {
-          return '申込の完了を確認しました。列車が共有どおりかは照合できませんでした。';
+          return '$basis\n列車が共有どおりかは照合できませんでした。';
         }
-        return '共有どおりの列車$trainNoteで申込が完了しました。';
+        return '共有どおりの列車$trainNoteです。$basis';
       case ReservationStatus.reservedOtherTrain:
         final shared = widget.info.jrSegment.departureTime;
         return '共有した${shared != null ? '$shared発' : '列車'}とは別の列車$trainNote'
-            'で申込が完了しました。';
+            'です。$basis';
       case ReservationStatus.cancelled:
         return '申込を完了せずにえきねっとを閉じました。';
       case ReservationStatus.unknown:
@@ -141,7 +146,6 @@ class _ReservationResultDialogState extends State<_ReservationResultDialog> {
                   for (final s in const [
                     ReservationStatus.reserved,
                     ReservationStatus.reservedOtherTrain,
-                    ReservationStatus.cancelled,
                   ])
                     RadioListTile<ReservationStatus>(
                       value: s,

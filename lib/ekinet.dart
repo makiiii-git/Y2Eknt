@@ -104,21 +104,31 @@ class EkinetPageScript {
   static const String snapshot = r'''
 (function() {
   function txt(e) { return e ? (e.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
-  // 列車名: 「はやぶさ３７号」。お知らせ欄の「台風25号」などを拾わないよう
-  // 列車情報ブロック（class に Train を含む要素）の中を優先して探す
   var trainRe = /([ぁ-んァ-ヶー一-龠]{2,12}[0-9０-９]{1,3}号)(?![車線])/;
-  function findTrain(root) {
-    var m = txt(root).match(trainRe);
-    return m ? m[1] : '';
-  }
+  // 乗車駅・時刻: 列車ごとの乗降ブロック（.selService_formTrain）を優先し、
+  // 無ければ経路要約の要素を使う
+  var geton = document.querySelector('.selService_formTrain .qrShare_titleReslutStNameGeton')
+      || document.querySelector('.qrShare_titleReslutStNameGeton');
+  var getoff = document.querySelector('.selService_formTrain .qrShare_titleReslutStNameGetoff')
+      || document.querySelector('.qrShare_titleReslutStNameGetoff');
+  // 列車名: 確認ページの列車名要素を優先。無ければ列車情報ブロックの中を探す
+  // （お知らせ欄の「台風25号」や決済欄を拾わないよう body 全体は見ない）
   var train = '';
-  var blocks = document.querySelectorAll('[class*="formTrain"], [class*="TrainName"], [class*="trainName"]');
-  for (var i = 0; i < blocks.length && !train; i++) train = findTrain(blocks[i]);
+  var nameEl = document.querySelector('.icSeat_formTrainListNameW, [class*="TrainListName"], [class*="resultTrainName"]');
+  var m = nameEl ? txt(nameEl).match(trainRe) : null;
+  if (m) train = m[1];
+  if (!train) {
+    var blocks = document.querySelectorAll('.selService_formTrain, [class*="formTrainList"]');
+    for (var i = 0; i < blocks.length && !train; i++) {
+      m = txt(blocks[i]).match(trainRe);
+      if (m) train = m[1];
+    }
+  }
   return JSON.stringify({
     title: document.title,
     headline: txt(document.querySelector('h2.pageHeadline, h2.selService_title')),
-    geton: txt(document.querySelector('.qrShare_titleReslutStNameGeton')),
-    getoff: txt(document.querySelector('.qrShare_titleReslutStNameGetoff')),
+    geton: txt(geton),
+    getoff: txt(getoff),
     summary: txt(document.querySelector('.qrShare_titleReslut')),
     train: train
   });

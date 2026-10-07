@@ -84,20 +84,45 @@ void main() {
       expect(o.shouldRecord, isFalse);
     });
 
-    test('検索結果まで進んで閉じたら cancelled', () {
+    test('確認ページに達せずに閉じたら記録しない（検索・空席確認だけの利用）', () {
       final t = EkinetReservationTracker(info)
         ..onUrl(conditionUrl)
-        ..onUrl(routeListUrl);
+        ..onUrl(routeListUrl)
+        ..onUrl('${base}FacilityDiscountSelect/Index')
+        ..onUrl('${base}SelectSeat/Index');
       final o = t.outcome();
-      expect(o.status, ReservationStatus.cancelled);
-      expect(o.shouldRecord, isTrue);
+      expect(o.status, ReservationStatus.unknown);
+      expect(o.shouldRecord, isFalse);
+      expect(t.progressed, isTrue);
     });
 
-    test('確認ページで閉じても cancelled（確定していない）', () {
+    test('確認ページに達したら確定したものとみなす（完了ページ未検知）', () {
       final t = EkinetReservationTracker(info)
         ..onUrl(routeListUrl)
         ..onSnapshot(confirmUrl, confirmSnap);
-      expect(t.outcome().status, ReservationStatus.cancelled);
+      final o = t.outcome();
+      expect(o.status, ReservationStatus.reserved);
+      expect(o.completionDetected, isFalse);
+      expect(o.itineraryVerified, isTrue);
+      expect(o.reservedTrain, 'はやぶさ37号');
+      expect(o.shouldRecord, isTrue);
+    });
+
+    test('確認ページで別の列車なら reservedOtherTrain（完了ページ未検知）', () {
+      const other = EkinetPageSnapshot(
+        title: '申込内容の確認｜JRきっぷ',
+        headline: '申込内容の確認',
+        geton: '東京 18時28分 発',
+        getoff: '仙台 20時23分 着',
+        train: 'やまびこ１５５号',
+      );
+      final t = EkinetReservationTracker(info)
+        ..onUrl(routeListUrl)
+        ..onSnapshot(confirmUrl, other);
+      final o = t.outcome();
+      expect(o.status, ReservationStatus.reservedOtherTrain);
+      expect(o.completionDetected, isFalse);
+      expect(o.reservedTrain, 'やまびこ155号');
     });
 
     test('確認→完了で共有どおりの時刻なら reserved', () {
@@ -107,6 +132,7 @@ void main() {
         ..onSnapshot('${base}SomeUnknownPage/Index', completeSnap);
       final o = t.outcome();
       expect(o.status, ReservationStatus.reserved);
+      expect(o.completionDetected, isTrue);
       expect(o.itineraryVerified, isTrue);
       expect(o.reservedTrain, 'はやぶさ37号');
       expect(o.reservedDepartureTime, '18:20');
@@ -157,23 +183,26 @@ void main() {
       expect(t.outcome().status, ReservationStatus.reserved);
     });
 
-    test('確認ページを経ずに「完了」見出しが出ても完了扱いしない', () {
+    test('確認ページを経ずに「完了」見出しが出ても判定しない', () {
       final t = EkinetReservationTracker(info)
         ..onUrl(routeListUrl)
         ..onSnapshot('${base}FacilityDiscountSelect/Index',
             const EkinetPageSnapshot(headline: '会員登録完了'));
-      expect(t.outcome().status, ReservationStatus.cancelled);
+      expect(t.completed, isFalse);
+      expect(t.outcome().status, ReservationStatus.unknown);
     });
 
-    test('確認後に URL が Complet を含めば見出しが読めなくても完了', () {
+    test('確認後に URL が Complet を含めば見出しが読めなくても完了を検知する', () {
       final t = EkinetReservationTracker(info)
         ..onUrl(routeListUrl)
         ..onSnapshot(confirmUrl, confirmSnap)
         ..onUrl(completeUrl);
-      expect(t.outcome().status, ReservationStatus.reserved);
+      final o = t.outcome();
+      expect(o.status, ReservationStatus.reserved);
+      expect(o.completionDetected, isTrue);
     });
 
-    test('申込内容を読めなかった完了は reserved だが照合なし', () {
+    test('申込内容を読めなかった確認ページは reserved だが照合なし', () {
       final t = EkinetReservationTracker(info)
         ..onUrl(routeListUrl)
         ..onUrl(confirmUrl)
@@ -181,6 +210,7 @@ void main() {
       final o = t.outcome();
       expect(o.status, ReservationStatus.reserved);
       expect(o.itineraryVerified, isFalse);
+      expect(o.completionDetected, isTrue);
       expect(o.reservedDepartureTime, isNull);
     });
 
