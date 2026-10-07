@@ -32,6 +32,13 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
   bool _filled = false;
   int _progress = 0;
 
+  /// この画面内だけで通知（スナックバー・エラーバナー）を出すためのメッセンジャー。
+  /// 画面を閉じればバナーも消える。
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
+
+  /// えきねっとのエラー画面の案内バナーを表示中か。
+  bool _errorBannerShown = false;
+
   /// ページ遷移のたびに増やし、古いポーリングを止めるための世代番号。
   int _pollGeneration = 0;
 
@@ -47,11 +54,13 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
         // load を待たずフォームが出現した時点で入力する
         onPageStarted: (url) {
           _tracker.onUrl(url);
+          if (!Ekinet.isErrorPage(url)) _hideErrorBanner();
           _pollFormAndFill(url);
         },
         onPageFinished: (url) {
           _autofillIfSearchPage(url);
           _captureSnapshot(url);
+          if (Ekinet.isErrorPage(url)) _showErrorBanner();
           _debugDumpPage(url);
         },
         onUrlChange: (change) {
@@ -86,6 +95,66 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
       }
       await Future<void>.delayed(_pollInterval);
     }
+  }
+
+  /// えきねっとのエラー画面（「ご確認ください」）を検知したら、原因の
+  /// 心当たり（受付時間外など）と復帰操作をアプリ側のバナーで案内する。
+  /// WebView の中の文言だけでは、何が起きたか・どう戻ればよいかが分かりにくいため。
+  Future<void> _showErrorBanner() async {
+    if (_errorBannerShown) return;
+    var pageMessage = '';
+    try {
+      var raw = (await _controller
+              .runJavaScriptReturningResult(EkinetPageScript.errorMessage))
+          .toString();
+      if (raw.startsWith('"')) raw = jsonDecode(raw) as String;
+      pageMessage = raw.trim();
+    } catch (_) {
+      // 本文を読めなくても案内は出す
+    }
+    if (!mounted) return;
+    final outside = Ekinet.isOutsideServiceHours(DateTime.now());
+    final text = StringBuffer('えきねっとがエラー画面を表示しました。');
+    if (pageMessage.isNotEmpty) text.write('\n「$pageMessage」');
+    text.write(outside
+        ? '\n現在は新幹線・特急の申込受付時間外（5:30〜23:50頃）です。'
+        : '\n受付時間外・操作のタイムアウト・前回の申込操作が途中で残っている場合に表示されます。');
+    _errorBannerShown = true;
+    _messenger.currentState?.showMaterialBanner(MaterialBanner(
+      leading: const Icon(Icons.warning_amber_rounded),
+      content: Text(text.toString()),
+      actions: [
+        TextButton(
+          onPressed: _returnToSearchCondition,
+          child: const Text('検索条件に戻る'),
+        ),
+        TextButton(
+          onPressed: _hideErrorBanner,
+          child: const Text('閉じる'),
+        ),
+      ],
+    ));
+  }
+
+  void _hideErrorBanner() {
+    if (!_errorBannerShown) return;
+    _errorBannerShown = false;
+    _messenger.currentState?.hideCurrentMaterialBanner();
+  }
+
+  /// エラー画面の「経路検索条件入力へ戻る」を押す。無ければ検索ページを開き直す。
+  /// 戻った検索ページには経路情報をもう一度自動入力する。
+  Future<void> _returnToSearchCondition() async {
+    _hideErrorBanner();
+    _filled = false;
+    try {
+      final r = await _controller
+          .runJavaScriptReturningResult(EkinetPageScript.clickReturnToSearch);
+      if (r.toString().contains('clicked')) return;
+    } catch (_) {
+      // ボタンを押せなければ直接開き直す
+    }
+    await _controller.loadRequest(Uri.parse(Ekinet.searchPageUrl));
   }
 
   /// 申込結果の判定に使う情報（ページ名・見出し・申込内容の駅と時刻）を
@@ -178,7 +247,7 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
     await _controller
         .runJavaScript(Ekinet.buildAutofillScript(widget.routeInfo));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    _messenger.currentState?.showSnackBar(const SnackBar(
       content: Text('検索条件を自動入力しました。内容を確認して「列車を検索する」を押してください'),
       duration: Duration(seconds: 5),
     ));
@@ -193,17 +262,20 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
         if (didPop) return;
         Navigator.of(context).pop(_tracker.outcome());
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('えきねっと'),
-          bottom: _progress < 100
-              ? PreferredSize(
-                  preferredSize: const Size.fromHeight(3),
-                  child: LinearProgressIndicator(value: _progress / 100),
-                )
-              : null,
+      child: ScaffoldMessenger(
+        key: _messenger,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('えきねっと'),
+            bottom: _progress < 100
+                ? PreferredSize(
+                    preferredSize: const Size.fromHeight(3),
+                    child: LinearProgressIndicator(value: _progress / 100),
+                  )
+                : null,
+          ),
+          body: WebViewWidget(controller: _controller),
         ),
-        body: WebViewWidget(controller: _controller),
       ),
     );
   }

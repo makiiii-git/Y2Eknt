@@ -20,6 +20,18 @@ class Ekinet {
   static bool isSearchPage(String url) =>
       url.contains('RouteSearchConditionInput');
 
+  /// えきねっとのエラー画面（見出し「ご確認ください」）か。
+  /// 受付時間外、操作のタイムアウト、前回の申込フローが途中のまま残っている
+  /// 場合などに表示される（2026-10-07 実機確認）。
+  static bool isErrorPage(String url) => url.contains('/ErrorScreen/');
+
+  /// 新幹線・特急の申込受付時間（5:30〜23:50）の外か。
+  /// 受付時間外は検索結果からエラー画面へ飛ばされる。
+  static bool isOutsideServiceHours(DateTime now) {
+    final minutes = now.hour * 60 + now.minute;
+    return minutes < 5 * 60 + 30 || minutes >= 23 * 60 + 50;
+  }
+
   /// 自動入力対象のフォーム要素がすべて存在するかを返す JavaScript 式。
   /// `runJavaScriptReturningResult` の結果が `true` なら入力可能。
   static const String formReadyScript = '(function() {'
@@ -100,6 +112,34 @@ class Ekinet {
 /// 個人情報（氏名・会員番号・決済情報・予約番号）は読み取らない。
 class EkinetPageScript {
   EkinetPageScript._();
+
+  /// エラー画面の本文を返す JavaScript。見出し「ご確認ください」の直後から
+  /// 戻るボタンの手前までの文章を最大 200 文字。見つからなければ空文字。
+  static const String errorMessage = r'''
+(function() {
+  var body = (document.body.textContent || '').replace(/\s+/g, ' ').trim();
+  var key = 'ご確認ください';
+  var i = body.indexOf(key);
+  if (i < 0) return '';
+  var s = body.slice(i + key.length);
+  var cut = s.search(/経路検索条件入力へ戻る|えきねっとトップへ戻る|JRきっぷトップ|ページの先頭へ/);
+  if (cut >= 0) s = s.slice(0, cut);
+  return s.trim().slice(0, 200);
+})()
+''';
+
+  /// エラー画面の「経路検索条件入力へ戻る」を押す JavaScript。
+  /// 押せたら 'clicked'、ボタンが無ければ 'not-found' を返す。
+  static const String clickReturnToSearch = r'''
+(function() {
+  var els = document.querySelectorAll('button, a, input[type=submit], input[type=button]');
+  for (var i = 0; i < els.length; i++) {
+    var t = (els[i].value || els[i].textContent || '').replace(/\s+/g, '');
+    if (t.indexOf('経路検索条件入力へ戻る') !== -1) { els[i].click(); return 'clicked'; }
+  }
+  return 'not-found';
+})()
+''';
 
   static const String snapshot = r'''
 (function() {

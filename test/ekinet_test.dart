@@ -4,6 +4,25 @@ import 'package:y2eknt/ekinet.dart';
 import 'package:y2eknt/route_parser.dart';
 
 void main() {
+  group('Ekinet ページ判定', () {
+    test('エラー画面は URL の ErrorScreen で判定する', () {
+      expect(
+          Ekinet.isErrorPage(
+              'https://www.eki-net.com/Personal/reserve/wb/ErrorScreen/Index'),
+          isTrue);
+      expect(Ekinet.isErrorPage(Ekinet.searchPageUrl), isFalse);
+    });
+
+    test('申込受付時間（5:30〜23:50）の外を判定する', () {
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 5, 29)), isTrue);
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 5, 30)), isFalse);
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 12, 0)), isFalse);
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 23, 49)), isFalse);
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 23, 50)), isTrue);
+      expect(Ekinet.isOutsideServiceHours(DateTime(2026, 10, 7, 23, 52)), isTrue);
+    });
+  });
+
   group('Ekinet.buildAutofillScript', () {
     const info = RouteInfo(
       departureStation: '東京',
