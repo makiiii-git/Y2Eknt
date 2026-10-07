@@ -5,23 +5,42 @@ import 'route_history.dart';
 import 'route_parser.dart';
 
 /// 申込結果ごとの表示（文言・アイコン・色）。履歴一覧・詳細・結果ダイアログで共用する。
+///
+/// 配色は「淡い単色の背景 ＋ 濃いめの同系色の文字・アイコン」。
+/// Material 3 のカード表面色に半透明の色を重ねると灰色がかって読みにくいため、
+/// 背景色は不透明で指定し、カードの表面ティントも無効にする。
 class ReservationStatusStyle {
-  const ReservationStatusStyle._(this.label, this.icon, this.color);
+  const ReservationStatusStyle._(
+      this.label, this.icon, this.color, this.background);
 
   final String label;
   final IconData icon;
+
+  /// 文字・アイコンの色（濃いめ）。履歴一覧のアイコンにも使う。
   final Color color;
+
+  /// バナーの背景色（淡い不透明色）。
+  final Color background;
 
   /// [ReservationStatus.unknown] は表示しないため null。
   static ReservationStatusStyle? of(ReservationStatus status) =>
       switch (status) {
         ReservationStatus.unknown => null,
         ReservationStatus.reserved => const ReservationStatusStyle._(
-            '共有どおりの列車で申込完了', Icons.check_circle, Color(0xFF00A044)),
+            '共有どおりの列車で申込完了',
+            Icons.check_circle,
+            Color(0xFF0B7A33),
+            Color(0xFFE3F5E8)),
         ReservationStatus.reservedOtherTrain => const ReservationStatusStyle._(
-            '別の列車で申込完了', Icons.swap_horiz, Color(0xFFE65100)),
+            '別の列車で申込完了',
+            Icons.swap_horiz,
+            Color(0xFFC2410C),
+            Color(0xFFFFF0E0)),
         ReservationStatus.cancelled => const ReservationStatusStyle._(
-            '申込を完了せずに終了', Icons.cancel, Color(0xFF757575)),
+            '申込を完了せずに終了',
+            Icons.cancel,
+            Color(0xFF616161),
+            Color(0xFFEFEFEF)),
       };
 }
 
@@ -41,14 +60,25 @@ class ReservationStatusBanner extends StatelessWidget {
         '${entry.reservedDepartureTime}発',
     ].join(' ');
     return Card(
-      color: style.color.withValues(alpha: 0.12),
+      color: style.background,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: style.color.withValues(alpha: 0.5)),
+      ),
       child: ListTile(
-        leading: Icon(style.icon, color: style.color),
+        leading: Icon(style.icon, color: style.color, size: 28),
         title: Text(
           style.label,
           style: TextStyle(color: style.color, fontWeight: FontWeight.bold),
         ),
-        subtitle: detail.isEmpty ? null : Text('申込内容: $detail'),
+        subtitle: detail.isEmpty
+            ? null
+            : Text(
+                '申込内容: $detail',
+                style: const TextStyle(color: Color(0xFF333333)),
+              ),
       ),
     );
   }
