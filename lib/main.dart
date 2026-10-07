@@ -6,10 +6,12 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'ad_banner.dart';
 import 'app_settings.dart';
 import 'build_config.dart';
+import 'ekinet_reservation.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
 import 'history_detail_page.dart';
 import 'premium.dart';
+import 'reservation_status_ui.dart';
 import 'review_prompt.dart';
 import 'route_history.dart';
 import 'route_parser.dart';
@@ -109,6 +111,7 @@ class _HomePageState extends State<HomePage> {
       // 起動直後でも確実に判定できるよう設定を直接読む
       final exEnabled = await AppSettings.getExEnabled();
       _autoOpen(
+          text,
           info,
           exEnabled &&
               PremiumManager.instance.isPremium.value &&
@@ -119,16 +122,23 @@ class _HomePageState extends State<HomePage> {
   /// 自動モード: 共有受信後すぐに予約サービスへ遷移する。
   /// 東海道・山陽・九州新幹線の経路はEX予約（連携ON時）、
   /// それ以外はえきねっとへ自動で振り分ける。
-  Future<void> _autoOpen(RouteInfo info, bool useEx) async {
+  Future<void> _autoOpen(String text, RouteInfo info, bool useEx) async {
     if (!mounted) return;
     final nav = Navigator.of(context);
     // 連続共有でWebViewが積み重ならないようホームまで戻してから開く
     nav.popUntil((route) => route.isFirst);
-    await nav.push(MaterialPageRoute(
+    final outcome = await nav.push<ReservationOutcome>(MaterialPageRoute(
       builder: (_) => useEx
           ? ExWebViewPage(routeInfo: info)
           : EkinetWebViewPage(routeInfo: info),
     ));
+    if (!mounted) return;
+    // えきねっとを閉じたときの申込結果を確認して履歴に記録する（EX予約は未対応）
+    if (outcome != null) {
+      await showReservationResultDialog(context,
+          text: text, info: info, outcome: outcome);
+      await _loadHistory();
+    }
     // 予約サービスから戻ってきたらレビュー依頼の条件を判定する
     await ReviewPrompt.onReservationServiceClosed();
   }
@@ -157,7 +167,11 @@ class _HomePageState extends State<HomePage> {
             IconButton(
               icon: const Icon(Icons.home_outlined),
               tooltip: 'ホームへ戻る',
-              onPressed: () => setState(() => _sharedText = null),
+              onPressed: () {
+                setState(() => _sharedText = null);
+                // 共有直後の画面で記録した申込結果を一覧に反映する
+                _loadHistory();
+              },
             ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -284,6 +298,9 @@ class _HistoryCard extends StatelessWidget {
     final isEx = info?.usesTokaidoSanyoKyushu ?? false;
     final color =
         isEx ? const Color(0xFF0053A6) : const Color(0xFF00A044);
+    // 申込結果が記録されていればアイコンと色をその状態で上書きする
+    final status = ReservationStatusStyle.of(entry.status);
+    final cancelled = entry.status == ReservationStatus.cancelled;
     final title = info != null
         ? '${info.departureStation} → ${info.arrivalStation}'
         : '（解析できない履歴）';
@@ -309,11 +326,23 @@ class _HistoryCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
           leading: Icon(
-            isEx ? Icons.directions_railway : Icons.train,
-            color: color,
+            status?.icon ?? (isEx ? Icons.directions_railway : Icons.train),
+            color: status?.color ?? color,
           ),
-          title: Text(title),
-          subtitle: subtitle.isEmpty ? null : Text(subtitle),
+          title: Text(
+            title,
+            style: cancelled
+                ? TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)
+                : null,
+          ),
+          subtitle: (subtitle.isEmpty && status == null)
+              ? null
+              : Text([
+                  if (subtitle.isNotEmpty) subtitle,
+                  if (status != null) status.label,
+                ].join('\n')),
+          isThreeLine: subtitle.isNotEmpty && status != null,
           trailing: const Icon(Icons.chevron_right),
           onTap: onTap,
         ),

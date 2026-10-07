@@ -41,6 +41,8 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // 共有先一覧で Play 版と区別できるようアプリ名をビルド種別ごとに変える
+        manifestPlaceholders["appLabel"] = "Y2Eknt"
     }
 
     signingConfigs {
@@ -59,6 +61,7 @@ android {
         // アンインストールせずに並行インストールできるようにする
         debug {
             applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "Y2Eknt Debug"
         }
         release {
             signingConfig = if (keystorePropertiesFile.exists()) {

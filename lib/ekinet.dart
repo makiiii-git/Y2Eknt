@@ -92,3 +92,36 @@ class Ekinet {
     return buf.toString();
   }
 }
+
+/// えきねっとの各ページから申込結果の判定に使う情報を読み取る JavaScript。
+///
+/// 戻り値は JSON 文字列。構造は [EkinetPageSnapshot] を参照
+/// （フィールド名・クラス名は 2026-10-07 に実サイトで確認）。
+/// 個人情報（氏名・会員番号・決済情報・予約番号）は読み取らない。
+class EkinetPageScript {
+  EkinetPageScript._();
+
+  static const String snapshot = r'''
+(function() {
+  function txt(e) { return e ? (e.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+  // 列車名: 「はやぶさ３７号」。お知らせ欄の「台風25号」などを拾わないよう
+  // 列車情報ブロック（class に Train を含む要素）の中を優先して探す
+  var trainRe = /([ぁ-んァ-ヶー一-龠]{2,12}[0-9０-９]{1,3}号)(?![車線])/;
+  function findTrain(root) {
+    var m = txt(root).match(trainRe);
+    return m ? m[1] : '';
+  }
+  var train = '';
+  var blocks = document.querySelectorAll('[class*="formTrain"], [class*="TrainName"], [class*="trainName"]');
+  for (var i = 0; i < blocks.length && !train; i++) train = findTrain(blocks[i]);
+  return JSON.stringify({
+    title: document.title,
+    headline: txt(document.querySelector('h2.pageHeadline, h2.selService_title')),
+    geton: txt(document.querySelector('.qrShare_titleReslutStNameGeton')),
+    getoff: txt(document.querySelector('.qrShare_titleReslutStNameGetoff')),
+    summary: txt(document.querySelector('.qrShare_titleReslut')),
+    train: train
+  });
+})()
+''';
+}

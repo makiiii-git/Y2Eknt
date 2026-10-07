@@ -2,14 +2,20 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'ekinet_reservation.dart';
 import 'ekinet_webview_page.dart';
 import 'ex_webview_page.dart';
+import 'reservation_status_ui.dart';
 import 'review_prompt.dart';
+import 'route_history.dart';
 import 'route_parser.dart';
 
 /// 経路テキストの解析結果と予約サービスへのボタンを表示するビュー。
 /// ホーム画面（共有直後）と履歴詳細画面で共用する。
-class RouteResultView extends StatelessWidget {
+///
+/// 履歴に記録された申込結果（えきねっとを閉じたときの自動判定）を表示し、
+/// 別の列車で申し込んだ場合や申込を中止した場合はカレンダー登録を無効にする。
+class RouteResultView extends StatefulWidget {
   const RouteResultView({
     super.key,
     required this.text,
@@ -21,6 +27,51 @@ class RouteResultView extends StatelessWidget {
 
   /// EX予約連携（Web版）が設定で有効か。
   final bool exEnabled;
+
+  @override
+  State<RouteResultView> createState() => _RouteResultViewState();
+}
+
+class _RouteResultViewState extends State<RouteResultView> {
+  String get text => widget.text;
+  bool get exEnabled => widget.exEnabled;
+
+  /// この経路の履歴（申込結果を含む）。履歴に無い場合は null。
+  HistoryEntry? _entry;
+
+  ReservationStatus get _status => _entry?.status ?? ReservationStatus.unknown;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEntry();
+  }
+
+  @override
+  void didUpdateWidget(covariant RouteResultView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) _loadEntry();
+  }
+
+  Future<void> _loadEntry() async {
+    final entry = await RouteHistory.find(text);
+    if (mounted) setState(() => _entry = entry);
+  }
+
+  /// えきねっとを開き、閉じたときの判定結果をポップアップで確認して履歴に記録する。
+  Future<void> _openEkinet(RouteInfo info) async {
+    final outcome = await Navigator.of(context).push<ReservationOutcome>(
+      MaterialPageRoute(builder: (_) => EkinetWebViewPage(routeInfo: info)),
+    );
+    if (!mounted) return;
+    if (outcome != null) {
+      await showReservationResultDialog(context,
+          text: text, info: info, outcome: outcome);
+      await _loadEntry();
+    }
+    // 予約サービスを使えた直後がレビューを頼むのに最も自然なタイミング
+    await ReviewPrompt.onReservationServiceClosed();
+  }
 
   Future<void> _copyText(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: text));
@@ -78,13 +129,7 @@ class RouteResultView extends StatelessWidget {
       label: 'えきねっとで検索（条件を自動入力）',
       primary: !exEnabled || !info.usesTokaidoSanyoKyushu,
       color: const Color(0xFF00A044), // えきねっとグリーン
-      onPressed: () async {
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => EkinetWebViewPage(routeInfo: info),
-        ));
-        // 予約サービスを使えた直後がレビューを頼むのに最も自然なタイミング
-        await ReviewPrompt.onReservationServiceClosed();
-      },
+      onPressed: () => _openEkinet(info),
     );
     final exButton = _ServiceButton(
       icon: Icons.directions_railway,
@@ -104,6 +149,11 @@ class RouteResultView extends StatelessWidget {
         : [ekinetButton, const SizedBox(height: 8), exButton];
   }
 
+  /// 共有した時刻での登録が誤りになる状態か。
+  bool get _calendarDisabled =>
+      _status == ReservationStatus.reservedOtherTrain ||
+      _status == ReservationStatus.cancelled;
+
   @override
   Widget build(BuildContext context) {
     final result = RouteParser.parse(text);
@@ -113,6 +163,7 @@ class RouteResultView extends StatelessWidget {
       children: [
         if (info != null) ...[
           RouteSummaryCard(info: info),
+          if (_entry != null) ReservationStatusBanner(entry: _entry!),
           const SizedBox(height: 16),
           ..._buildServiceButtons(context, info),
         ] else ...[
@@ -126,15 +177,26 @@ class RouteResultView extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 8),
-        if (info != null && info.year != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.event),
-              label: const Text('カレンダーに登録'),
-              onPressed: () => _addToCalendar(info),
-            ),
+        if (info != null && info.year != null) ...[
+          // 別の列車で申し込んだ／申込を中止した経路は共有時刻での登録が誤りになるため無効化
+          OutlinedButton.icon(
+            icon: const Icon(Icons.event),
+            label: const Text('カレンダーに登録'),
+            onPressed: _calendarDisabled ? null : () => _addToCalendar(info),
           ),
+          if (_calendarDisabled)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Text(
+                _status == ReservationStatus.reservedOtherTrain
+                    ? '別の列車で申し込んだため、共有した時刻でのカレンダー登録は無効です'
+                    : '申込を完了していないため、カレンダー登録は無効です',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
         OutlinedButton.icon(
           icon: const Icon(Icons.copy),
           label: const Text('テキストをコピー'),
