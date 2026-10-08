@@ -266,7 +266,11 @@ class _ExWebViewPageState extends State<ExWebViewPage> {
               )
             : null,
       ),
-      body: WebViewWidget(controller: _controller),
+      // エッジツーエッジ表示でページ最下部がナビゲーションバーに隠れないようにする
+      body: SafeArea(
+        top: false,
+        child: WebViewWidget(controller: _controller),
+      ),
     );
   }
 }

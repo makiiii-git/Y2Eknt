@@ -36,6 +36,10 @@ class _AdBannerState extends State<AdBanner> {
 
   Future<void> _load(int width) async {
     try {
+      // google_mobile_ads 8.0 で非推奨になったが、置き換え先の
+      // getLargeAnchoredAdaptiveBannerAdSize はバナーが高くなり画面の見え方が
+      // 変わるため、従来の高さのまま使い続ける
+      // ignore: deprecated_member_use
       final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
           width);
       if (size == null) return;

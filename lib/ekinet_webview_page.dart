@@ -274,7 +274,12 @@ class _EkinetWebViewPageState extends State<EkinetWebViewPage> {
                   )
                 : null,
           ),
-          body: WebViewWidget(controller: _controller),
+          // エッジツーエッジ表示ではナビゲーションバーの下まで描画されるため、
+          // ページの最下部（フッターのボタン等）が隠れないよう下側だけ避ける
+          body: SafeArea(
+            top: false,
+            child: WebViewWidget(controller: _controller),
+          ),
         ),
       ),
     );

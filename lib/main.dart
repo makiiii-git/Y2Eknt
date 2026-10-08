@@ -247,7 +247,10 @@ class _HomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      // 広告バナーが無い（プレミアム・GitHub版）ときはナビゲーションバーの余白を加える。
+      // バナーがあるときは Scaffold が本文の下余白を 0 にするので二重にはならない
+      padding: EdgeInsets.fromLTRB(
+          16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
       children: [
         Card(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,

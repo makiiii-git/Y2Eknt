@@ -159,7 +159,10 @@ class _RouteResultViewState extends State<RouteResultView> {
     final result = RouteParser.parse(text);
     final info = result.routeInfo;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      // 明示的な padding を渡すと ListView はシステムバーの余白を自動で足さないため、
+      // エッジツーエッジ表示でも最下部がナビゲーションバーに隠れないよう下余白を加える
+      padding: EdgeInsets.fromLTRB(
+          16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
       children: [
         if (info != null) ...[
           RouteSummaryCard(info: info),

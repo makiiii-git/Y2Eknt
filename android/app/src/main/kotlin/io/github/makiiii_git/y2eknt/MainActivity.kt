@@ -2,17 +2,24 @@ package io.github.makiiii_git.y2eknt
 
 import android.content.Intent
 import android.os.Bundle
-import io.flutter.embedding.android.FlutterActivity
+import androidx.activity.enableEdgeToEdge
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// enableEdgeToEdge() は ComponentActivity の拡張関数のため、
+// FlutterActivity ではなく FlutterFragmentActivity（ComponentActivity の子孫）を使う
+class MainActivity : FlutterFragmentActivity() {
     private val channelName = "io.github.makiiii_git.y2eknt/share"
     private var sharedText: String? = null
     private var channel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android 15 未満でもエッジツーエッジ表示にする（Android 15 以降は
+        // targetSdk 35+ で強制されるため、全バージョンで見え方をそろえる）。
+        // Flutter 側は MediaQuery のパディングでステータスバー・ナビゲーションバーを避ける
+        enableEdgeToEdge()
         handleSendIntent(intent)
     }
 
