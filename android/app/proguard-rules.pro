@@ -14,3 +14,15 @@
 -keep class * extends androidx.room.RoomDatabase {
     <init>();
 }
+
+# MainActivity の enableEdgeToEdge() 呼び出しを、R8 にインライン化・改名させない。
+# Play Console の「一部のユーザーでエッジ ツー エッジ表示が有効にならないことが
+# あります」はバイトコード上の EdgeToEdge.enable 呼び出しを静的に探す。R8 が本体を
+# MainActivity.onCreate に埋め込み androidx.activity.EdgeToEdge を改名すると、
+# 実際には有効になっていても検出されず警告が残る（1.0.8 で確認。flutter/flutter#192921）。
+-keep class androidx.activity.EdgeToEdge {
+    public static *** enable*(...);
+}
+# 呼び出しのシグネチャが元の型名のまま読めるよう、引数の型名も残す
+-keepnames class androidx.activity.ComponentActivity
+-keepnames class androidx.activity.SystemBarStyle
