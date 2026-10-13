@@ -40,6 +40,8 @@ android {
         versionName = flutter.versionName
         // 共有先一覧で Play 版と区別できるようアプリ名をビルド種別ごとに変える
         manifestPlaceholders["appLabel"] = "Y2Eknt"
+        // AdMobアプリID（本番）
+        manifestPlaceholders["admobAppId"] = "ca-app-pub-5796626901181447~3379727368"
     }
 
     signingConfigs {
@@ -53,14 +55,25 @@ android {
         }
     }
 
+    // Google提供のテスト用AdMobアプリID
+    val admobTestAppId = "ca-app-pub-3940256099942544~3347511713"
+
     buildTypes {
         // デバッグ版はアプリIDを変えて、Play版がインストール済みの端末にも
         // アンインストールせずに並行インストールできるようにする
         debug {
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "Y2Eknt Debug"
+            // 開発用ビルドから本番のAdMobアプリIDを使うと未登録アプリとして検出されるため
+            manifestPlaceholders["admobAppId"] = admobTestAppId
         }
         release {
+            // リリース版の実機確認用（Play版と並行インストールする）:
+            //   flutter build apk --release --android-project-arg=r8test=true
+            if (project.hasProperty("r8test")) {
+                applicationIdSuffix = ".r8test"
+                manifestPlaceholders["admobAppId"] = admobTestAppId
+            }
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

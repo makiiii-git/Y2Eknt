@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// バナー広告ユニットID（AdMob本番）。
 ///
 /// AndroidManifest.xmlのcom.google.android.gms.ads.APPLICATION_IDに
 /// 対応するAdMobアプリIDを設定しており、両者は同じAdMobアプリに属する。
 const bannerAdUnitId = 'ca-app-pub-5796626901181447/8168135134';
+
+/// Google提供のテスト用アダプティブバナー広告ユニットID。
+const _testBannerAdUnitId = 'ca-app-pub-3940256099942544/9214589741';
+
+/// AdMobに登録している本番のパッケージ名。
+const _productionPackageName = 'io.github.makiiii_git.y2eknt';
+
+/// 本番パッケージ以外（.debug や .r8test）では必ずテスト広告を使う。
+/// 開発用ビルドから本番ユニットへリクエストすると、AdMobに未登録アプリとして
+/// 検出されたり無効なトラフィックと見なされたりするため。
+Future<String> _resolveBannerAdUnitId() async {
+  final info = await PackageInfo.fromPlatform();
+  return info.packageName == _productionPackageName
+      ? bannerAdUnitId
+      : _testBannerAdUnitId;
+}
 
 /// ホーム画面下部に表示するアンカー型アダプティブバナー。
 /// 読み込みに失敗した場合や広告SDKが使えない環境では何も表示しない。
@@ -43,8 +60,10 @@ class _AdBannerState extends State<AdBanner> {
       final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
           width);
       if (size == null) return;
+      final adUnitId = await _resolveBannerAdUnitId();
+      if (!mounted) return;
       final ad = BannerAd(
-        adUnitId: bannerAdUnitId,
+        adUnitId: adUnitId,
         size: size,
         request: const AdRequest(),
         listener: BannerAdListener(

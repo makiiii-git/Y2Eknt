@@ -33,10 +33,11 @@
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
-        <!-- AdMobアプリID（本番）。lib/ad_banner.dartの広告ユニットIDと対になる -->
+        <!-- AdMobアプリID。本番はlib/ad_banner.dartの広告ユニットIDと対になる。
+             開発用ビルドではテスト用IDに切り替える（build.gradle.kts参照） -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-5796626901181447~3379727368"/>
+            android:value="${admobAppId}"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
